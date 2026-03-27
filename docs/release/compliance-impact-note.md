@@ -4,7 +4,7 @@
 **Platform:** Seeed Studio XIAO MG24 (EFR32MG24 SoC)
 **Date:** 2026-03-24
 **Branch:** ws/regulatory
-**Status:** Pre-certification — no lab submission has been made
+**Status:** Pre-certification - no lab submission has been made
 
 ---
 
@@ -17,9 +17,9 @@ This distinction is a prerequisite for any pre-lab documentation package.
 |---|---|---|
 | SoC | EFR32MG24, Seeed XIAO MG24 module | Known fact |
 | Primary protocol (V1) | Zigbee, Home Assistant ZHA | Design intent |
-| Roadmap protocols | Matter + Thread, BLE | Design intent — not V1 scope |
-| Internal antenna | 2.4 GHz FPC, gain unspecified | Design intent — gain NOT measured |
-| External antenna | 2.4 GHz U.FL omnidirectional, 6.4 dBi | Datasheet claim — NOT measured on product |
+| Roadmap protocols | Matter + Thread, BLE | Design intent - not V1 scope |
+| Internal antenna | 2.4 GHz FPC, gain unspecified | Design intent - gain NOT measured |
+| External antenna | 2.4 GHz U.FL omnidirectional, 6.4 dBi | Datasheet claim - NOT measured on product |
 | RF output power | Not documented | Not measured |
 | EIRP budget | Not calculated | Not performed |
 | Enclosure | Not defined | Not tested |
@@ -33,27 +33,27 @@ All figures in use are either datasheet values or design intent.
 
 ## 2. Compliance-Sensitive Assumptions and Decisions
 
-### 2.1 External Antenna at 6.4 dBi — EIRP Ceiling Risk
+### 2.1 External Antenna at 6.4 dBi - EIRP Ceiling Risk
 
-**Severity: HIGH — potential hard regulatory stop**
+**Severity: HIGH - potential hard regulatory stop**
 
 Under the EU Radio Equipment Directive (RED, 2014/53/EU) and harmonised standard ETSI EN 300 328,
 the maximum allowed EIRP for 2.4 GHz wideband transmitters (including Zigbee / IEEE 802.15.4) is **+20 dBm**.
 
 The EFR32MG24 supports up to +20 dBm conducted output (datasheet maximum).
-At 6.4 dBi antenna gain the system EIRP reaches approximately **+26.4 dBm** — 6 dB above the regulatory ceiling.
+At 6.4 dBi antenna gain the system EIRP reaches approximately **+26.4 dBm** - 6 dB above the regulatory ceiling.
 
 This configuration cannot be shipped CE-marked without mitigation. Labelling alone does not resolve it.
 Two paths exist:
 
-1. **Firmware power cap:** When the external antenna is fitted, conducted output must not exceed approximately **+13.6 dBm** to keep EIRP ≤ +20 dBm.
+1. **Firmware power cap:** When the external antenna is fitted, conducted output must not exceed approximately **+13.6 dBm** to keep EIRP <= +20 dBm.
 2. **Remove the external antenna option** from all CE-marked product configurations.
 
 Additionally: the 6.4 dBi figure is a datasheet claim. It has not been measured in the actual product context.
 Antenna gain varies with ground plane geometry, nearby conductors, and enclosure proximity.
 The 6.4 dBi value must not be used as a safe design assumption until verified by measurement.
 
-### 2.2 Internal FPC Antenna — Gain Unknown
+### 2.2 Internal FPC Antenna - Gain Unknown
 
 The internal FPC antenna has no documented gain. Without a measured gain value:
 
@@ -75,7 +75,7 @@ Without a locked, documented, and verified conducted output power:
 
 This is a prerequisite for every subsequent RF compliance step.
 
-### 2.4 Module-Level Approval — Scope Not Transferable Without Review
+### 2.4 Module-Level Approval - Scope Not Transferable Without Review
 
 The Seeed XIAO MG24 module may carry FCC/IC/CE marks at the module level.
 Module-level approval covers the module in isolation on a reference PCB with a specific antenna configuration.
@@ -93,14 +93,14 @@ A separate technical file and Declaration of Conformity must be prepared for thi
 
 The current status "not confirmed as transferable" is the correct conservative position and must not be relaxed without explicit legal review of Seeed's approval documentation against this product's actual configuration.
 
-### 2.5 Protocol Scope — Certification-Sensitive Decision
+### 2.5 Protocol Scope - Certification-Sensitive Decision
 
 Each radio protocol has a distinct regulatory identity under RED:
 
 | Protocol | Standard | Notes |
 |---|---|---|
 | Zigbee (IEEE 802.15.4) | ETSI EN 300 328 | V1 scope |
-| BLE | ETSI EN 300 328 | Different duty cycle and modulation — separate test run required |
+| BLE | ETSI EN 300 328 | Different duty cycle and modulation - separate test run required |
 | Thread (IEEE 802.15.4) | ETSI EN 300 328 | Similar test family as Zigbee but RF config must match |
 | Matter | Application layer over Thread | CSA certification is a separate, additional process |
 
@@ -114,7 +114,7 @@ Options:
 
 This decision must be captured in an ADR before V1 is submitted for testing.
 
-### 2.6 Enclosure — Undefined and Untested
+### 2.6 Enclosure - Undefined and Untested
 
 The enclosure is not defined. Direct compliance consequences:
 
@@ -125,7 +125,7 @@ The enclosure is not defined. Direct compliance consequences:
 
 Any enclosure decision made after RF testing begins must be treated as a change that may invalidate existing measurements.
 
-### 2.7 Battery Voltage Variation — RF Impact
+### 2.7 Battery Voltage Variation - RF Impact
 
 The 1S LiPo battery affects compliance testing in two ways:
 
@@ -138,22 +138,22 @@ The 1S LiPo battery affects compliance testing in two ways:
 
 Listed in dependency order.
 
-### Step 1 — Lock firmware RF configuration (bench, no lab)
+### Step 1 - Lock firmware RF configuration (bench, no lab)
 
 Document and version-control the Tx power setting for each radio mode.
 Confirm against EFR32MG24 PA calibration tables.
 **This single action unblocks all downstream RF compliance work.**
 
-### Step 2 — Conducted output power measurement (bench: spectrum analyser / power meter)
+### Step 2 - Conducted output power measurement (bench: spectrum analyser / power meter)
 
 Measure actual conducted output at the U.FL connector and PCB antenna feed for:
-- Zigbee (channels 11–26; note channel 26 is restricted in some regions)
+- Zigbee (channels 11-26; note channel 26 is restricted in some regions)
 - BLE (if planned for any production firmware, even if not V1)
 - Thread (if planned)
 
 Measure at full, nominal, and minimum battery voltage.
 
-### Step 3 — Internal FPC antenna gain measurement (anechoic chamber)
+### Step 3 - Internal FPC antenna gain measurement (anechoic chamber)
 
 Measure total radiated power (TRP) and peak gain of the internal FPC antenna in the production-representative PCB configuration:
 - Without enclosure first
@@ -161,27 +161,27 @@ Measure total radiated power (TRP) and peak gain of the internal FPC antenna in 
 
 FPC antenna performance cannot be approximated from datasheet values given its PCB-dependency.
 
-### Step 4 — External U.FL antenna gain measurement (anechoic chamber)
+### Step 4 - External U.FL antenna gain measurement (anechoic chamber)
 
 Measure TRP and peak gain of the external omnidirectional antenna as connected to this product, including cable and connector losses.
 The 6.4 dBi datasheet value is not acceptable as a design input until confirmed in context.
 
-### Step 5 — EIRP budget calculation and verification
+### Step 5 - EIRP budget calculation and verification
 
 Calculate EIRP for each antenna path and each radio mode using measured conducted power and measured antenna gain.
 Confirm all configurations are at or below +20 dBm (EN 300 328 limit for 2.4 GHz).
 If any configuration exceeds the limit, implement firmware power capping and repeat measurement.
 
-### Step 6 — Enclosure-integrated RF performance
+### Step 6 - Enclosure-integrated RF performance
 
 Repeat TRP and EIRP measurements with the production-representative enclosure installed.
 Enclosure-induced variation greater than ~1 dB requires EIRP budget recalculation.
 
-### Step 7 — Radiated emissions pre-scan (before formal lab submission)
+### Step 7 - Radiated emissions pre-scan (before formal lab submission)
 
 Perform a radiated emissions pre-scan (EN 55032 / CISPR 32) to identify unexpected harmonics or spurious emissions from the power supply, SoC, or sensor circuitry before committing to a formal test slot.
 
-### Step 8 — Conducted and ESD immunity (installation environment dependent)
+### Step 8 - Conducted and ESD immunity (installation environment dependent)
 
 Depending on the intended installation environment (hydraulic control cabinet, industrial mounting),
 the following may apply:
@@ -199,9 +199,9 @@ The following items must exist before a technical file can be assembled for a RE
 | Gap | Required Document |
 |---|---|
 | RF Tx power not specified | Firmware RF configuration document: protocol, channel, power level, PA setting (versioned) |
-| EIRP budget not performed | EIRP budget calculation sheet — both antenna paths, all radio modes |
-| FPC antenna gain unknown | Antenna characterisation test report — internal path, final PCB, with and without enclosure |
-| External antenna gain unverified | Antenna characterisation test report — external path, 6.4 dBi claim verified or corrected |
+| EIRP budget not performed | EIRP budget calculation sheet - both antenna paths, all radio modes |
+| FPC antenna gain unknown | Antenna characterisation test report - internal path, final PCB, with and without enclosure |
+| External antenna gain unverified | Antenna characterisation test report - external path, 6.4 dBi claim verified or corrected |
 | Enclosure not defined | Enclosure material spec and mechanical drawing referencing antenna keep-out zones |
 | Module approval scope not assessed | Legal/technical review of Seeed XIAO MG24 RED declaration confirming what it covers for this product |
 | No CE / RED test plan | Formal test plan referencing: EN 300 328, EN 55032, EN 62368-1, RED Article 3 |
@@ -215,7 +215,7 @@ The following items must exist before a technical file can be assembled for a RE
 
 The product is not currently in a state where a lab submission can be scheduled or a timeline estimated.
 
-### Immediate — close before any lab time is booked
+### Immediate - close before any lab time is booked
 
 1. **Lock firmware Tx power configuration for Zigbee.** Store as a versioned parameter.
    This unblocks the EIRP budget calculation and all downstream decisions.
@@ -241,7 +241,7 @@ The product is not currently in a state where a lab submission can be scheduled 
 
 ### Before lab submission
 
-7. Complete Steps 3–8 from the measurements section in order.
+7. Complete Steps 3-8 from the measurements section in order.
 
 8. Assemble the technical file: RF configuration document, EIRP budget calculation, antenna test reports, enclosure drawing, applicable standards list, and DoC.
 

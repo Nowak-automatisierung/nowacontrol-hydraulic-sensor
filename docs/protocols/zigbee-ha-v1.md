@@ -1,8 +1,8 @@
-# Zigbee + Home Assistant Integration — V1 Design Reference
+# Zigbee + Home Assistant Integration - V1 Design Reference
 
 **Product:** nowaControl hydraulic sensor
 **Hardware platform:** XIAO MG24, internal 2.4 GHz FPC antenna (optional external U.FL, 6.4 dBi)
-**Document status:** Draft — 2026-03-22
+**Document status:** Draft - 2026-03-22
 **Scope:** V1 ZHA integration. zigbee2mqtt is out of scope for V1 (see Section 9 for known risks).
 
 ---
@@ -19,7 +19,7 @@
 | Manufacturer name | `nowaControl` |
 | Model identifier | `hydraulic-sensor-v1` |
 
-**Device ID rationale:** Device ID 0x0305 (Pressure Sensor) is defined in the ZHA Device Specification and maps directly to the Pressure Measurement cluster (0x0403). ZHA and other ZCL-aware coordinators use the Device ID to drive automatic entity discovery. Using 0x0305 avoids the need for a custom ZHA quirk in V1 — the coordinator's cluster inspection path can resolve the pressure entity without manual cluster mapping. Device ID 0x0000 (Generic Sensor) would require coordinator-side custom handling and is explicitly rejected for V1.
+**Device ID rationale:** Device ID 0x0305 (Pressure Sensor) is defined in the ZHA Device Specification and maps directly to the Pressure Measurement cluster (0x0403). ZHA and other ZCL-aware coordinators use the Device ID to drive automatic entity discovery. Using 0x0305 avoids the need for a custom ZHA quirk in V1 - the coordinator's cluster inspection path can resolve the pressure entity without manual cluster mapping. Device ID 0x0000 (Generic Sensor) would require coordinator-side custom handling and is explicitly rejected for V1.
 
 The device operates as a sleeping end device only. It does not route traffic and must not be configured as a router.
 
@@ -142,7 +142,7 @@ The device is a sleeping end device. It wakes on a configurable schedule (defaul
 - The device scans all Zigbee channels and attempts association on the first channel with a joinable PAN.
 - Join timeout: 3 minutes from boot. If no coordinator responds within 3 minutes, the device enters deep sleep and retries on next scheduled wake.
 
-> **TODO:** Install code (ZB3 install code commissioning) is not implemented in V1. Mark as future enhancement. Touchlink commissioning is explicitly out of scope for V1 — complexity is not justified by the product use case.
+> **TODO:** Install code (ZB3 install code commissioning) is not implemented in V1. Mark as future enhancement. Touchlink commissioning is explicitly out of scope for V1 - complexity is not justified by the product use case.
 
 ### Post-join sequence
 
@@ -203,10 +203,10 @@ The device does not implement complex parent selection logic in V1. It attempts 
 
 | Entity | Domain | Attribute source | Cluster | Unit | HA conversion | Auto or quirk |
 |---|---|---|---|---|---|---|
-| Hydraulic Pressure | `sensor` | MeasuredValue (0x0000) | 0x0403 | bar | value / 1000 (10 Pa units → bar) | Auto (Device ID 0x0305) |
+| Hydraulic Pressure | `sensor` | MeasuredValue (0x0000) | 0x0403 | bar | value / 1000 (10 Pa units -> bar) | Auto (Device ID 0x0305) |
 | Battery | `sensor` | BatteryPercentageRemaining (0x0021) | 0x0001 | % | value / 2 | Auto (ZHA battery template) |
 | Battery Voltage | `sensor` | BatteryVoltage (0x0020) | 0x0001 | V | value / 10 | Auto (ZHA, may not render by default) |
-| Identify | `button` | Identify cluster (0x0003) | 0x0003 | — | sends IdentifyTime=10 | Auto (ZHA generates for all Identify servers) |
+| Identify | `button` | Identify cluster (0x0003) | 0x0003 | - | sends IdentifyTime=10 | Auto (ZHA generates for all Identify servers) |
 
 **Design goal: no ZHA quirk required for V1.**
 
@@ -214,10 +214,10 @@ The device does not implement complex parent selection logic in V1. It attempts 
 
 The following conditions would require a custom `zhaquirks` entry. They are design anti-patterns for V1 and must be avoided:
 
-- Using Device ID 0x0000 (Generic) instead of 0x0305 — ZHA cannot auto-map the pressure cluster without a quirk.
+- Using Device ID 0x0000 (Generic) instead of 0x0305 - ZHA cannot auto-map the pressure cluster without a quirk.
 - Reporting pressure on a non-standard cluster or attribute ID.
 - Using a non-standard unit encoding that ZHA does not recognize.
-- Manufacturer/model strings that differ from `nowaControl` / `hydraulic-sensor-v1` — ZHA quirk matching is exact-string on these two fields.
+- Manufacturer/model strings that differ from `nowaControl` / `hydraulic-sensor-v1` - ZHA quirk matching is exact-string on these two fields.
 - Any attribute that requires endpoint remapping or cluster override.
 
 > **TODO:** Validate ZHA's automatic unit conversion for cluster 0x0403. ZHA translates the ZCL-spec unit (10 Pa) to bar in the entity. This translation is present in HA 2023.x but the exact release must be confirmed (see Section 8).
@@ -286,14 +286,14 @@ All tests listed below must be executed on the V1 reference coordinator (Sonoff 
 |---|---|---|---|
 | ZB-V1-01 | Pairing with ZHA | Manual, USB dongle, HA UI | Device appears in ZHA device list; all 4 server clusters (0x0000, 0x0001, 0x0003, 0x0403) visible in cluster inspection |
 | ZB-V1-02 | Pressure entity created | Manual, HA entity registry | `sensor.hydraulic_pressure` (or equivalent) appears in HA with unit `bar` and non-null state within 10 s of pairing |
-| ZB-V1-03 | Pressure value accuracy | Manual + calibrated reference pressure source | Reported value is within ±0.5% of full scale compared to reference; value matches expected ZCL encoding (Pa/10 → bar) |
+| ZB-V1-03 | Pressure value accuracy | Manual + calibrated reference pressure source | Reported value is within +/-0.5% of full scale compared to reference; value matches expected ZCL encoding (Pa/10 -> bar) |
 | ZB-V1-04 | Reporting cadence | Automated capture via Wireshark/PCAP on CC2652P sniffer port | Pressure reports arrive at min 30 s to max 300 s intervals; no report missed for > 330 s under stable conditions |
 | ZB-V1-05 | Battery reporting | Manual + controlled LiPo discharge | `BatteryPercentageRemaining` decrements in expected steps; HA battery entity shows correct percentage (attribute value / 2) |
-| ZB-V1-06 | Rejoin after power loss | Manual — cut device power, restore | Device rejoins network within 2 minutes; `sensor.hydraulic_pressure` and battery entities recover to `available` state |
-| ZB-V1-07 | Reporting re-configured after rejoin | Automated — monitor ZCL traffic post-rejoin | Attribute reporting configuration is re-established and first pressure report arrives within 30 s of rejoin completion |
-| ZB-V1-08 | Factory reset | Manual — hold button > 5 s | Device sends ZDP Leave, disappears from ZHA; re-pairs cleanly as a new device on next join attempt |
+| ZB-V1-06 | Rejoin after power loss | Manual - cut device power, restore | Device rejoins network within 2 minutes; `sensor.hydraulic_pressure` and battery entities recover to `available` state |
+| ZB-V1-07 | Reporting re-configured after rejoin | Automated - monitor ZCL traffic post-rejoin | Attribute reporting configuration is re-established and first pressure report arrives within 30 s of rejoin completion |
+| ZB-V1-08 | Factory reset | Manual - hold button > 5 s | Device sends ZDP Leave, disappears from ZHA; re-pairs cleanly as a new device on next join attempt |
 | ZB-V1-09 | Network key rotation | ZHA coordinator action (TC key update via HA UI or ZHA service call) | Device receives new NWK key and remains reachable; pressure reports continue uninterrupted after key update |
-| ZB-V1-10 | Low battery alert | Manual + controlled LiPo discharge to ≤15% | HA battery entity shows value ≤ 15%; HA UI indicates low battery state; immediate report triggered below threshold |
+| ZB-V1-10 | Low battery alert | Manual + controlled LiPo discharge to <=15% | HA battery entity shows value <= 15%; HA UI indicates low battery state; immediate report triggered below threshold |
 
 > **TODO:** Tests ZB-V1-04 and ZB-V1-07 require a Zigbee packet capture setup (second CC2652P in sniffer mode or equivalent). Confirm lab availability before scheduling integration validation.
 
