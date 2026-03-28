@@ -13,11 +13,15 @@ project(
 include(nowacontrol-zigbee-ha.cmake)
 
 add_executable(nowacontrol-zigbee-ha
-    # Add additional sources here
+    # Sensor HAL sources
+    ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/onewire.c
+    ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/ds18b20.c
+    ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/sensor_hal.c
 )
 
 target_include_directories(nowacontrol-zigbee-ha PUBLIC
-    # Add additional include paths here
+    # Sensor HAL include path
+    ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface
 )
 
 target_compile_definitions(nowacontrol-zigbee-ha PUBLIC
