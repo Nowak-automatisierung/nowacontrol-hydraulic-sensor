@@ -36,3 +36,13 @@ secrets/
 
 # Claude local settings
 .claude/settings.local.json
+
+# Simplicity Studio / Silicon Labs
+.projectlinkstore
+AGENTS.md
+AGENTS-SLAB.md
+*.out
+*.map
+*.bin
+*.hex
+*.s37
