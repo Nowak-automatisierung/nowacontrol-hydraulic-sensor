@@ -8,6 +8,9 @@ project(
 	LANGUAGES C CXX ASM
 )
 
+# Global include path for Sensor HAL (needed by app.c compiled via SLC)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface)
+
 # Include the definition of the slc_nowacontrol-zigbee-ha target,
 # which contains the content of the SLC project
 include(nowacontrol-zigbee-ha.cmake)
