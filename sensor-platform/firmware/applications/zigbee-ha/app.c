@@ -12,6 +12,8 @@
  ******************************************************************************/
 
 #include "app/framework/include/af.h"
+#include "network-steering.h"
+#include "sl_simple_led_instances.h"
 #include "sensor_hal.h"
 
 // ---------------------------------------------------------------------------
@@ -30,13 +32,18 @@
 // ---------------------------------------------------------------------------
 
 static sl_zigbee_af_event_t measurement_event;
+static sl_zigbee_af_event_t steering_event;
+static sl_zigbee_af_event_t led_event;
 static bool sensor_initialized = false;
+static uint8_t steering_retry_count = 0;
 
 // ---------------------------------------------------------------------------
 // Forward declarations
 // ---------------------------------------------------------------------------
 
 static void measurement_event_handler(sl_zigbee_af_event_t *event);
+static void steering_event_handler(sl_zigbee_af_event_t *event);
+static void led_event_handler(sl_zigbee_af_event_t *event);
 static void update_temperature_attribute(uint8_t endpoint, float temperature);
 
 // ---------------------------------------------------------------------------
@@ -46,6 +53,15 @@ static void update_temperature_attribute(uint8_t endpoint, float temperature);
 void sl_zigbee_af_main_init_cb(void)
 {
   sl_zigbee_af_event_init(&measurement_event, measurement_event_handler);
+  sl_zigbee_af_event_init(&steering_event, steering_event_handler);
+  sl_zigbee_af_event_init(&led_event, led_event_handler);
+
+  /* Blink LED to confirm firmware is running */
+  sl_led_turn_on(&sl_led_led0);
+  sl_zigbee_af_event_set_delay_ms(&led_event, 500);
+
+  /* Auto-join: start network steering after 5 seconds if not on a network */
+  sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
   /* Initialize sensor HAL */
   sensor_hal_status_t status = sensor_hal_init();
@@ -154,6 +170,46 @@ static void update_temperature_attribute(uint8_t endpoint, float temperature)
 }
 
 // ---------------------------------------------------------------------------
+// LED blink handler - visual confirmation that firmware is running
+// ---------------------------------------------------------------------------
+
+static void led_event_handler(sl_zigbee_af_event_t *event)
+{
+  (void)event;
+  sl_led_toggle(&sl_led_led0);
+
+  /* Blink fast (500ms) while not on network, slow (2s) when joined */
+  sl_status_t net_status = sl_zigbee_af_network_state();
+  if (net_status == SL_ZIGBEE_JOINED_NETWORK) {
+    sl_zigbee_af_event_set_delay_ms(&led_event, 2000);
+  } else {
+    sl_zigbee_af_event_set_delay_ms(&led_event, 500);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Auto-join: start network steering if not on a network
+// ---------------------------------------------------------------------------
+
+static void steering_event_handler(sl_zigbee_af_event_t *event)
+{
+  (void)event;
+
+  /* Only start steering if we are NOT already on a network */
+  sl_status_t net_status = sl_zigbee_af_network_state();
+  if (net_status != SL_ZIGBEE_JOINED_NETWORK) {
+    sl_zigbee_app_debug_println("Not on network - starting steering (attempt %d)...",
+                                steering_retry_count + 1);
+    sl_status_t steer_status = sl_zigbee_af_network_steering_start();
+    sl_zigbee_app_debug_println("Steering start returned: 0x%04X", steer_status);
+    steering_retry_count++;
+  } else {
+    sl_zigbee_app_debug_println("Already on network - skipping steering");
+    sl_led_turn_on(&sl_led_led0); /* Solid LED = joined */
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Network steering callback
 // ---------------------------------------------------------------------------
 
@@ -165,7 +221,14 @@ void sl_zigbee_af_network_steering_complete_cb(sl_status_t status,
   UNUSED_VAR(totalBeacons);
   UNUSED_VAR(joinAttempts);
   UNUSED_VAR(finalState);
-  sl_zigbee_app_debug_println("%s network %s: 0x%02X", "Join", "complete", status);
+  sl_zigbee_app_debug_println("Join complete: 0x%04X (beacons=%d, attempts=%d)",
+                              status, totalBeacons, joinAttempts);
+
+  if (status != SL_STATUS_OK && steering_retry_count < 5) {
+    /* Retry steering after 10 seconds */
+    sl_zigbee_app_debug_println("Steering failed - retry in 10s...");
+    sl_zigbee_af_event_set_delay_ms(&steering_event, 10000);
+  }
 }
 
 // ---------------------------------------------------------------------------
