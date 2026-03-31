@@ -63,15 +63,9 @@ void sl_zigbee_af_main_init_cb(void)
   /* Auto-join: start network steering after 5 seconds if not on a network */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
-  /* Initialize sensor HAL */
-  sensor_hal_status_t status = sensor_hal_init();
-  if (status == SENSOR_HAL_OK) {
-    sensor_initialized = true;
-    sl_zigbee_app_debug_println("Sensor HAL initialized: %d sensors found",
-                                sensor_hal_get_sensor_count());
-  } else {
-    sl_zigbee_app_debug_println("Sensor HAL init failed: %d", status);
-  }
+  /* Sensor HAL init DISABLED for ZHA join test - re-enable after join works */
+  sensor_initialized = false;
+  sl_zigbee_app_debug_println("Sensor HAL disabled for join test");
 }
 
 // ---------------------------------------------------------------------------
@@ -83,11 +77,17 @@ void sl_zigbee_af_stack_status_cb(sl_status_t status)
   if (status == SL_STATUS_NETWORK_UP) {
     sl_zigbee_app_debug_println("Network UP - starting temperature measurements");
 
+    /* Cancel any pending steering retry - we are joined */
+    sl_zigbee_af_event_set_inactive(&steering_event);
+
     /* Start periodic measurement */
     sl_zigbee_af_event_set_delay_ms(&measurement_event, 5000); /* First read after 5s */
   } else if (status == SL_STATUS_NETWORK_DOWN) {
-    sl_zigbee_app_debug_println("Network DOWN");
+    sl_zigbee_app_debug_println("Network DOWN - will retry steering in 5s");
     sl_zigbee_af_event_set_inactive(&measurement_event);
+
+    /* Restart network steering so device rejoins automatically */
+    sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
   }
 }
 
@@ -100,16 +100,11 @@ static void measurement_event_handler(sl_zigbee_af_event_t *event)
   (void)event;
 
   if (!sensor_initialized) {
-    /* Try to reinitialize sensors */
-    sensor_hal_status_t init_status = sensor_hal_init();
-    if (init_status == SENSOR_HAL_OK) {
-      sensor_initialized = true;
-      sl_zigbee_app_debug_println("Sensor HAL re-initialized OK");
-    } else {
-      sl_zigbee_app_debug_println("Sensor init retry failed");
-      sl_zigbee_af_event_set_delay_ms(&measurement_event, MEASUREMENT_INTERVAL_MS);
-      return;
-    }
+    /* Sensor HAL intentionally disabled during join testing.
+     * Re-enable by calling sensor_hal_init() here once join is stable. */
+    sl_zigbee_app_debug_println("Sensor HAL disabled - skipping measurement");
+    sl_zigbee_af_event_set_delay_ms(&measurement_event, MEASUREMENT_INTERVAL_MS);
+    return;
   }
 
   /* Perform blocking measurement (~750ms) */
@@ -224,10 +219,11 @@ void sl_zigbee_af_network_steering_complete_cb(sl_status_t status,
   sl_zigbee_app_debug_println("Join complete: 0x%04X (beacons=%d, attempts=%d)",
                               status, totalBeacons, joinAttempts);
 
-  if (status != SL_STATUS_OK && steering_retry_count < 5) {
-    /* Retry steering after 10 seconds */
-    sl_zigbee_app_debug_println("Steering failed - retry in 10s...");
-    sl_zigbee_af_event_set_delay_ms(&steering_event, 10000);
+  if (status != SL_STATUS_OK) {
+    /* Retry steering every 30 seconds until joined (no limit) */
+    sl_zigbee_app_debug_println("Steering failed - retry in 30s (attempt %d)...",
+                                steering_retry_count);
+    sl_zigbee_af_event_set_delay_ms(&steering_event, 30000);
   }
 }
 
