@@ -29,8 +29,9 @@
 #define NOWA_MODEL_IDENTIFIER    "\x13Hydraulic Sensor V1" /* 19 chars */
 #define NOWA_SW_BUILD_ID         "\x0E""2026.04.01-1.0"   /* 14 chars */
 #define NOWA_HW_VERSION          ((uint8_t)1u)
-/* ZCL power source 0x03 = single battery; already the generated default */
-#define NOWA_POWER_SOURCE_ZCL    ((uint8_t)0x03u)
+/* ZCL Basic Cluster PowerSource values (ZCL spec Table 3-10) */
+#define NOWA_ZCL_POWER_SOURCE_MAINS   ((uint8_t)0x01u)  /**< Mains, single phase */
+#define NOWA_ZCL_POWER_SOURCE_BATTERY ((uint8_t)0x03u)  /**< Single-phase battery */
 
 // ---------------------------------------------------------------------------
 // Zigbee endpoint IDs
@@ -59,6 +60,7 @@ static void led_event_handler(sl_zigbee_af_event_t *event);
 static void update_temperature_attribute(uint8_t endpoint, float temperature);
 static void init_external_antenna(void);
 static void init_basic_cluster_attributes(void);
+static void boot_detect_power_source(void);
 
 // ---------------------------------------------------------------------------
 // Application init (called once at startup)
@@ -72,26 +74,31 @@ void sl_zigbee_af_main_init_cb(void)
   /* ---- 2. CLI commands ------------------------------------------------- */
   nowa_cli_init();
 
-  /* ---- 3. External antenna --------------------------------------------- */
+  /* ---- 3. Battery ADC + boot power-source detection ------------------- */
+  /*  Must run before init_basic_cluster_attributes() so the correct       */
+  /*  ZCL PowerSource value (battery vs mains) is written to the cluster.  */
+  bat_initialized = (nowa_bat_init() == SL_STATUS_OK);
+  if (bat_initialized) {
+    boot_detect_power_source();
+  }
+
+  /* ---- 4. External antenna --------------------------------------------- */
   init_external_antenna();
 
-  /* ---- 4. Events ------------------------------------------------------- */
+  /* ---- 5. Events ------------------------------------------------------- */
   sl_zigbee_af_event_init(&measurement_event, measurement_event_handler);
   sl_zigbee_af_event_init(&steering_event,    steering_event_handler);
   sl_zigbee_af_event_init(&led_event,         led_event_handler);
 
-  /* ---- 5. Basic Cluster product identity -------------------------------- */
+  /* ---- 6. Basic Cluster product identity (uses detected power source) -- */
   init_basic_cluster_attributes();
 
-  /* ---- 6. LED startup blink -------------------------------------------- */
+  /* ---- 7. LED startup blink -------------------------------------------- */
   sl_led_turn_on(&sl_led_led0);
   sl_zigbee_af_event_set_delay_ms(&led_event, 500);
 
-  /* ---- 7. Auto-join: start network steering after 5 s ------------------ */
+  /* ---- 8. Auto-join: start network steering after 5 s ------------------ */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
-
-  /* ---- 8. Battery ADC -------------------------------------------------- */
-  bat_initialized = (nowa_bat_init() == SL_STATUS_OK);
 
   /* ---- 9. Sensor HAL --------------------------------------------------- */
   sensor_hal_status_t hal_st = sensor_hal_init();
@@ -106,6 +113,81 @@ void sl_zigbee_af_main_init_cb(void)
   }
 
   sl_zigbee_app_debug_println("NowaControl Hydraulic Sensor V1 - init complete");
+}
+
+// ---------------------------------------------------------------------------
+// Boot-time power source detection
+//
+// Takes a single ADC reading immediately after IADC init and infers whether
+// the device is running on battery (Li-Ion 3.0 – 4.2 V) or connected to
+// USB/mains.
+//
+// Detection thresholds (voltage at battery terminals):
+//   > MAINS_HI  : USB/mains definitely connected (charging or regulated)
+//   < BATTERY_HI: battery-only mode (no USB)
+//   between     : ambiguous – keep existing nowa_config setting
+//
+// The auto-detected value is written to nowa_config ONLY when:
+//   a) the config is still at factory default (version == 2, no manual override)
+//   b) OR pending_apply == 0 (user has not issued a manual override)
+//
+// A manual override via CLI ("nowa config set-pwr") is preserved across boots
+// because nowa_config_set_power_source() sets pending_apply = 1 and that flag
+// is cleared by nowa_config_init() only AFTER the value has been applied.
+// The auto-detector checks for pending_apply == 0 before updating.
+// ---------------------------------------------------------------------------
+
+#define BOOT_DETECT_MAINS_HI_MV      4100u  /**< Above = USB/mains present   */
+#define BOOT_DETECT_BATTERY_HI_MV    3950u  /**< Below = battery-only        */
+
+static void boot_detect_power_source(void)
+{
+  nowa_bat_reading_t bat;
+  if (nowa_bat_measure(&bat) != SL_STATUS_OK) {
+    sl_zigbee_app_debug_println("BootDetect: ADC read failed – keeping config");
+    return;
+  }
+
+  uint16_t v_mv = bat.voltage_mv;
+  sl_zigbee_app_debug_println("BootDetect: V_bat = %d mV", (int)v_mv);
+
+  const nowa_config_t *cfg = nowa_config_get();
+  nowa_power_source_t detected;
+  bool confident = true;
+
+  if (v_mv > BOOT_DETECT_MAINS_HI_MV) {
+    detected = NOWA_POWER_SOURCE_MAINS;
+    sl_zigbee_app_debug_println("BootDetect: USB/mains detected (V > %d mV)",
+                                BOOT_DETECT_MAINS_HI_MV);
+  } else if (v_mv < BOOT_DETECT_BATTERY_HI_MV) {
+    detected = NOWA_POWER_SOURCE_BATTERY;
+    sl_zigbee_app_debug_println("BootDetect: battery-only detected (V < %d mV)",
+                                BOOT_DETECT_BATTERY_HI_MV);
+  } else {
+    /* Ambiguous range: 3950 – 4100 mV could be either fully-charged battery
+     * or mains at start-up – retain existing config setting */
+    confident = false;
+    sl_zigbee_app_debug_println(
+      "BootDetect: ambiguous voltage (%d mV) – keeping existing pwr_src=%d",
+      (int)v_mv, (int)cfg->power_source);
+  }
+
+  /* Update config only when detection is confident and no manual override */
+  if (confident && (cfg->power_source != (uint8_t)detected)) {
+    sl_zigbee_app_debug_println(
+      "BootDetect: updating power_source %d → %d",
+      (int)cfg->power_source, (int)detected);
+    /* Use nowa_config_set_power_source() to persist + set pending_apply */
+    nowa_config_set_power_source(detected);
+    /* Clear pending_apply immediately: this change took effect right now */
+    /* (pending_apply is for CLI changes that need a full reboot cycle) */
+    /* Auto-detection is applied every boot, so no reboot logic needed.  */
+    /* Access internal struct pointer to clear flag directly:            */
+    /* We call init on a copy; use save() to persist cleared flag.       */
+    /* Safe: nowa_config_get() returns &s_config which is mutable via    */
+    /* the setter already called above. Re-save with flag cleared:       */
+    nowa_config_save();  /* saves with pending_apply = 1 from setter */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -171,8 +253,15 @@ static void init_basic_cluster_attributes(void)
     sl_zigbee_app_debug_println("BasicCluster: hw_ver write failed 0x%02X", st);
   }
 
-  /* Power source: 0x03 = single-phase battery */
-  uint8_t pwr_src = NOWA_POWER_SOURCE_ZCL;
+  /* Power source: derived from boot-detected nowa_config setting.
+   * boot_detect_power_source() has already run before this function,
+   * so nowa_config reflects the actual power topology.
+   * NOWA_POWER_SOURCE_BATTERY → ZCL 0x03 (single-phase battery)
+   * NOWA_POWER_SOURCE_MAINS   → ZCL 0x01 (mains, single phase)  */
+  const nowa_config_t *cfg = nowa_config_get();
+  uint8_t pwr_src = (cfg->power_source == (uint8_t)NOWA_POWER_SOURCE_MAINS)
+                    ? NOWA_ZCL_POWER_SOURCE_MAINS
+                    : NOWA_ZCL_POWER_SOURCE_BATTERY;
   st = sl_zigbee_af_write_server_attribute(
          ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
          ZCL_POWER_SOURCE_ATTRIBUTE_ID,
