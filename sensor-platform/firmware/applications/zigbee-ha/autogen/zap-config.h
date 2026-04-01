@@ -35,7 +35,7 @@
 	#define ZCL_GENERATED_MIN_MAX_DEFAULTS { { { .ptrToDefaultValue = (uint8_t*)0x00 }, { .ptrToDefaultValue = (uint8_t*)0x00 }, { .ptrToDefaultValue = (uint8_t*)0x00 } } }
 
 
-#define ZCL_GENERATED_ATTRIBUTE_COUNT (15)
+#define ZCL_GENERATED_ATTRIBUTE_COUNT (18)
 
 // This is an array of sl_zigbee_af_attribute_metadata_t structures.
 #define ZCL_GENERATED_ATTRIBUTES { \
@@ -47,25 +47,29 @@
 	  { 0x0007, ZCL_ENUM8_ATTRIBUTE_TYPE, 1, (ATTRIBUTE_MASK_SINGLETON), { (uint8_t*)0x03  } }, /* 5 Cluster: Basic, Attribute: power source, Side: server*/ \
 		  { 0x4000, ZCL_CHAR_STRING_ATTRIBUTE_TYPE, 17, (ATTRIBUTE_MASK_SINGLETON), { (uint8_t*)&(generatedDefaults[66]) } }, /* 6 Cluster: Basic, Attribute: sw build id, Side: server*/ \
 	  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (ATTRIBUTE_MASK_SINGLETON), { (uint8_t*)3  } }, /* 7 Cluster: Basic, Attribute: cluster revision, Side: server*/ \
-		  { 0x0000, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0x0000  } }, /* 8 Cluster: Identify, Attribute: identify time, Side: server*/ \
-		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } }, /* 9 Cluster: Identify, Attribute: cluster revision, Side: server*/ \
-		  { 0x0000, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)0x8000  } }, /* 10 Cluster: Temperature Measurement, Attribute: measured value, Side: server*/ \
-		  { 0x0001, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)-1000  } }, /* 11 Cluster: Temperature Measurement, Attribute: min measured value, Side: server*/ \
-		  { 0x0002, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)12500  } }, /* 12 Cluster: Temperature Measurement, Attribute: max measured value, Side: server*/ \
-		  { 0x0003, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)50  } }, /* 13 Cluster: Temperature Measurement, Attribute: tolerance, Side: server*/ \
-		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } } /* 14 Cluster: Temperature Measurement, Attribute: cluster revision, Side: server*/ \
+		  { 0x0020, ZCL_INT8U_ATTRIBUTE_TYPE, 1, (0x00), { (uint8_t*)0  } }, /* 8 Cluster: Power Configuration, Attribute: battery voltage, Side: server*/ \
+		  { 0x0021, ZCL_INT8U_ATTRIBUTE_TYPE, 1, (0x00), { (uint8_t*)0  } }, /* 9 Cluster: Power Configuration, Attribute: battery percentage remaining, Side: server*/ \
+		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)2  } }, /* 10 Cluster: Power Configuration, Attribute: cluster revision, Side: server*/ \
+		  { 0x0000, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0x0000  } }, /* 11 Cluster: Identify, Attribute: identify time, Side: server*/ \
+		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } }, /* 12 Cluster: Identify, Attribute: cluster revision, Side: server*/ \
+		  { 0x0000, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)0x8000  } }, /* 13 Cluster: Temperature Measurement, Attribute: measured value, Side: server*/ \
+		  { 0x0001, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)-1000  } }, /* 14 Cluster: Temperature Measurement, Attribute: min measured value, Side: server*/ \
+		  { 0x0002, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)12500  } }, /* 15 Cluster: Temperature Measurement, Attribute: max measured value, Side: server*/ \
+		  { 0x0003, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)50  } }, /* 16 Cluster: Temperature Measurement, Attribute: tolerance, Side: server*/ \
+		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } } /* 17 Cluster: Temperature Measurement, Attribute: cluster revision, Side: server*/ \
 		 }
 
  
 
-#define ZCL_GENERATED_CLUSTER_COUNT (4)
+#define ZCL_GENERATED_CLUSTER_COUNT (5)
 	
 // This is an array of sl_zigbee_af_cluster_t structures.
 #define ZCL_GENERATED_CLUSTERS { \
   { 0x0000, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[0]), 8, 0, CLUSTER_MASK_SERVER, NULL }, /* 0, Endpoint Id: 1, Cluster: Basic, Side: server*/ \
-	  { 0x0003, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[8]), 2, 4, CLUSTER_MASK_SERVER, NULL }, /* 1, Endpoint Id: 1, Cluster: Identify, Side: server*/ \
-	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[10]), 5, 10, CLUSTER_MASK_SERVER, NULL }, /* 2, Endpoint Id: 1, Cluster: Temperature Measurement, Side: server*/ \
-	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[10]), 5, 10, CLUSTER_MASK_SERVER, NULL } /* 3, Endpoint Id: 2, Cluster: Temperature Measurement, Side: server*/ \
+	  { 0x0001, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[8]), 3, 4, CLUSTER_MASK_SERVER, NULL }, /* 1, Endpoint Id: 1, Cluster: Power Configuration, Side: server*/ \
+	  { 0x0003, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[11]), 2, 4, CLUSTER_MASK_SERVER, NULL }, /* 2, Endpoint Id: 1, Cluster: Identify, Side: server*/ \
+	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[13]), 5, 10, CLUSTER_MASK_SERVER, NULL }, /* 3, Endpoint Id: 1, Cluster: Temperature Measurement, Side: server*/ \
+	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[13]), 5, 10, CLUSTER_MASK_SERVER, NULL } /* 4, Endpoint Id: 2, Cluster: Temperature Measurement, Side: server*/ \
 	 }
 
  
@@ -122,16 +126,18 @@
 #define ZCL_GENERATED_CLUSTER_MANUFACTURER_CODE_COUNT (0)
 #define ZCL_GENERATED_CLUSTER_MANUFACTURER_CODES { \
   { 0x00, 0x00 }  \
-				 } 
+					 } 
 // This is an array of sl_zigbee_af_manufacturer_code_entry_t structures for attributes.
 #define ZCL_GENERATED_ATTRIBUTE_MANUFACTURER_CODE_COUNT (0)
 #define ZCL_GENERATED_ATTRIBUTE_MANUFACTURER_CODES { \
   { 0x00, 0x00 } \
-															 } 
+																		 } 
 // Array of sl_zigbee_af_plugin_reporting_entry_t structures.
-#define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS_TABLE_SIZE (2)
+#define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS_TABLE_SIZE (4)
 #define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS { \
-  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 1, Cluster: Temperature Measurement, Attribute: measured value */ \
+  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0001, 0x0020, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 30, 300, 1 } }, /* Endpoint Id: 1, Cluster: Power Configuration, Attribute: battery voltage */ \
+	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0001, 0x0021, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 30, 300, 5 } }, /* Endpoint Id: 1, Cluster: Power Configuration, Attribute: battery percentage remaining */ \
+	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 1, Cluster: Temperature Measurement, Attribute: measured value */ \
 	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0002, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 2, Cluster: Temperature Measurement, Attribute: measured value */ \
 	 } 
 
@@ -140,11 +146,13 @@
 
 // All Enabled Clusters
 #define ZCL_USING_BASIC_CLUSTER_SERVER
+#define ZCL_USING_POWER_CONFIG_CLUSTER_SERVER
 #define ZCL_USING_IDENTIFY_CLUSTER_SERVER
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_SERVER
 
 // Cluster Counts
 #define SL_ZIGBEE_ZCL_BASIC_CLUSTER_SERVER_ENDPOINT_COUNT (1)
+#define SL_ZIGBEE_ZCL_POWER_CONFIG_CLUSTER_SERVER_ENDPOINT_COUNT (1)
 #define SL_ZIGBEE_ZCL_IDENTIFY_CLUSTER_SERVER_ENDPOINT_COUNT (1)
 #define SL_ZIGBEE_ZCL_TEMP_MEASUREMENT_CLUSTER_SERVER_ENDPOINT_COUNT (2)
 
@@ -157,6 +165,9 @@
 #define ZCL_USING_BASIC_CLUSTER_POWER_SOURCE_ATTRIBUTE
 #define ZCL_USING_BASIC_CLUSTER_SW_BUILD_ID_ATTRIBUTE
 #define ZCL_USING_BASIC_CLUSTER_CLUSTER_REVISION_SERVER_ATTRIBUTE
+#define ZCL_USING_POWER_CONFIG_CLUSTER_BATTERY_VOLTAGE_ATTRIBUTE
+#define ZCL_USING_POWER_CONFIG_CLUSTER_BATTERY_PERCENTAGE_REMAINING_ATTRIBUTE
+#define ZCL_USING_POWER_CONFIG_CLUSTER_CLUSTER_REVISION_SERVER_ATTRIBUTE
 #define ZCL_USING_IDENTIFY_CLUSTER_IDENTIFY_TIME_ATTRIBUTE
 #define ZCL_USING_IDENTIFY_CLUSTER_CLUSTER_REVISION_SERVER_ATTRIBUTE
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_TEMP_MEASURED_VALUE_ATTRIBUTE

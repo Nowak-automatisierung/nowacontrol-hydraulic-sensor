@@ -18,6 +18,7 @@
 #include "sl_device_gpio.h"     /* PB4, PB5, PD4 macros */
 #include "sensor_hal.h"
 #include "nowa_config.h"
+#include "nowa_bat.h"
 
 // ---------------------------------------------------------------------------
 // Product identity strings (ZCL char-string: 1-byte length + UTF-8, no NUL)
@@ -44,6 +45,7 @@ static sl_zigbee_af_event_t steering_event;
 static sl_zigbee_af_event_t led_event;
 
 static bool    sensor_initialized     = false;
+static bool    bat_initialized        = false;
 static bool    s_conversion_started   = false;  /* non-blocking measurement FSM */
 static uint8_t steering_retry_count   = 0;
 
@@ -84,7 +86,10 @@ void sl_zigbee_af_main_init_cb(void)
   /* ---- 6. Auto-join: start network steering after 5 s ------------------ */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
-  /* ---- 7. Sensor HAL ------------------------------------------------------ */
+  /* ---- 7. Battery ADC ----------------------------------------------------- */
+  bat_initialized = (nowa_bat_init() == SL_STATUS_OK);
+
+  /* ---- 8. Sensor HAL ------------------------------------------------------ */
   sensor_hal_status_t hal_st = sensor_hal_init();
   if (hal_st == SENSOR_HAL_OK) {
     sensor_initialized = true;
@@ -257,6 +262,30 @@ static void measurement_event_handler(sl_zigbee_af_event_t *event)
       }
     } else {
       sl_zigbee_app_debug_println("Read failed: %d", (int)s);
+    }
+
+    /* ---- Battery voltage measurement (piggy-back on temperature cycle) -- */
+    if (bat_initialized) {
+      nowa_bat_reading_t bat;
+      if (nowa_bat_measure(&bat) == SL_STATUS_OK) {
+        /* Write ZCL Power Configuration Cluster attributes */
+        sl_zigbee_af_write_server_attribute(
+          ENDPOINT_VORLAUF, ZCL_POWER_CONFIG_CLUSTER_ID,
+          ZCL_BATTERY_VOLTAGE_ATTRIBUTE_ID,
+          &bat.zcl_voltage, ZCL_INT8U_ATTRIBUTE_TYPE);
+
+        sl_zigbee_af_write_server_attribute(
+          ENDPOINT_VORLAUF, ZCL_POWER_CONFIG_CLUSTER_ID,
+          ZCL_BATTERY_PERCENTAGE_REMAINING_ATTRIBUTE_ID,
+          &bat.zcl_percentage, ZCL_INT8U_ATTRIBUTE_TYPE);
+
+        sl_zigbee_app_debug_println(
+          "Battery: %d mV → %d%% (zcl_v=%d zcl_pct=%d)",
+          (int)bat.voltage_mv,
+          (int)(bat.zcl_percentage / 2),
+          (int)bat.zcl_voltage,
+          (int)bat.zcl_percentage);
+      }
     }
 
     /* Schedule next measurement cycle, accounting for conversion time */
