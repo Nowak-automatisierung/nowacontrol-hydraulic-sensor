@@ -39,6 +39,7 @@ secrets/
 
 # Simplicity Studio / Silicon Labs
 .projectlinkstore
+.uceditor/
 AGENTS.md
 AGENTS-SLAB.md
 *.out

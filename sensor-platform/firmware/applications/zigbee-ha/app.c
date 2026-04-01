@@ -177,16 +177,11 @@ static void boot_detect_power_source(void)
     sl_zigbee_app_debug_println(
       "BootDetect: updating power_source %d → %d",
       (int)cfg->power_source, (int)detected);
-    /* Use nowa_config_set_power_source() to persist + set pending_apply */
+    /* Persist detected value; setter already calls nowa_config_save()
+     * internally (pending_apply=1 is intentional: cleared on next boot
+     * by nowa_config_init() after the value has been applied).          */
     nowa_config_set_power_source(detected);
-    /* Clear pending_apply immediately: this change took effect right now */
-    /* (pending_apply is for CLI changes that need a full reboot cycle) */
-    /* Auto-detection is applied every boot, so no reboot logic needed.  */
-    /* Access internal struct pointer to clear flag directly:            */
-    /* We call init on a copy; use save() to persist cleared flag.       */
-    /* Safe: nowa_config_get() returns &s_config which is mutable via    */
-    /* the setter already called above. Re-save with flag cleared:       */
-    nowa_config_save();  /* saves with pending_apply = 1 from setter */
+    nowa_config_save();  /* redundant but harmless: ensures NVM3 is current */
   }
 }
 
