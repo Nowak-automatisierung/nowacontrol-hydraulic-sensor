@@ -13,7 +13,7 @@ DocumentNamespace: https://silabs.com
 
 ## Creation Information
 Creator: Organization: Silicon Laboratories, Inc.
-Created: 2026-03-28T19:32:00Z
+Created: 2026-04-01T09:48:02Z
 ## Relationships
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-silabs.simplicity_sdk-2025.12.2
 
@@ -92,7 +92,6 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-psa_se_driver
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-legacy_hal_wdog
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-hfxo_manager
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-common_token_manager
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-zigbee_secure_key_storage
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_common
@@ -138,7 +137,6 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_msc
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-bootloader_interface_s2
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-device_i2c
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_deepsleep
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-debug_swo
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_rail_util_ieee802154_stack_event
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-interrupt_manager_cortexm
@@ -190,6 +188,9 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main_process_action
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-endianness
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-gpio
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_no_deepsleep
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-iostream_rtt
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-segger_rtt
 
 ## Package Information
 PackageName: EFR32MG24B220F1536IM48
@@ -929,17 +930,6 @@ PackageLicenseConcluded: MSLA
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-legacy_hal_wdog CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
 
 ## Package Information
-PackageName: HFXO Manager
-SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-hfxo_manager
-PackageVersion: 2025.12.2
-PrimaryPackagePurpose: LIBRARY
-PackageDownloadLocation: NOASSERTION
-PackageSupplier: Organization: Silicon Laboratories, Inc.
-PackageLicenseConcluded: Zlib
-## Relationships
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-hfxo_manager CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
-
-## Package Information
 PackageName: Common Token Manager
 SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-common_token_manager
 PackageVersion: 2025.12.2
@@ -1433,17 +1423,6 @@ PackageSupplier: Organization: Silicon Laboratories, Inc.
 PackageLicenseConcluded: Zlib
 ## Relationships
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-device_i2c CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
-
-## Package Information
-PackageName: Power Manager: Deepsleep
-SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_deepsleep
-PackageVersion: 2025.12.2
-PrimaryPackagePurpose: LIBRARY
-PackageDownloadLocation: NOASSERTION
-PackageSupplier: Organization: Silicon Laboratories, Inc.
-PackageLicenseConcluded: Zlib
-## Relationships
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_deepsleep CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
 
 ## Package Information
 PackageName: SWO Debug
@@ -2020,3 +1999,36 @@ PackageSupplier: Organization: Silicon Laboratories, Inc.
 PackageLicenseConcluded: Zlib
 ## Relationships
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-gpio CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: Power Manager: No Deepsleep
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_no_deepsleep
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-power_manager_no_deepsleep CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: IO Stream: RTT
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-iostream_rtt
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-iostream_rtt CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: SEGGER RTT
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-segger_rtt
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Segger
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-segger_rtt CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2

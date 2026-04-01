@@ -19,5 +19,10 @@
 
 #ifdef SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT
 
+WEAK(void sl_zigbee_af_identify_cluster_server_tick_cb(uint8_t endpoint))
+{
+	(void)endpoint;
+}
+
 
 #endif // SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT

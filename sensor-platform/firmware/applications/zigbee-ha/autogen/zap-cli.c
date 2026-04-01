@@ -65,14 +65,54 @@ extern "C" {
 #endif
 
 // Provide function declarations
+void sli_zigbee_cli_zcl_identify_ez_mode_command(sl_cli_command_arg_t *arguments);
+void sli_zigbee_cli_zcl_identify_id_command(sl_cli_command_arg_t *arguments);
+void sli_zigbee_cli_zcl_identify_query_command(sl_cli_command_arg_t *arguments);
 void sli_zigbee_cli_zcl_basic_rtfd_command(sl_cli_command_arg_t *arguments);
+void sli_zigbee_cli_zcl_identify_trigger_command(sl_cli_command_arg_t *arguments);
 
 // Command structs. Names are command names prefixed by cli_cmd_zcl_[cluster name]_cluster
+static const sl_cli_command_info_t cli_cmd_zcl_identify_cluster_ez_mode_invoke = \
+SL_CLI_COMMAND(sli_zigbee_cli_zcl_identify_ez_mode_command,
+            "Invoke EZMode on an Identify Server",
+            "action" SL_CLI_UNIT_SEPARATOR ,
+            {
+                SL_CLI_ARG_UINT8,
+                SL_CLI_ARG_END,
+            });
+
+static const sl_cli_command_info_t cli_cmd_zcl_identify_cluster_identify = \
+SL_CLI_COMMAND(sli_zigbee_cli_zcl_identify_id_command,
+            "Command description for Identify",
+            "identify time" SL_CLI_UNIT_SEPARATOR ,
+            {
+                SL_CLI_ARG_UINT16,
+                SL_CLI_ARG_END,
+            });
+
+static const sl_cli_command_info_t cli_cmd_zcl_identify_cluster_identify_query = \
+SL_CLI_COMMAND(sli_zigbee_cli_zcl_identify_query_command,
+            "Command description for IdentifyQuery",
+            "",
+            {
+                SL_CLI_ARG_END,
+            });
+
 static const sl_cli_command_info_t cli_cmd_zcl_basic_cluster_reset_to_factory_defaults = \
 SL_CLI_COMMAND(sli_zigbee_cli_zcl_basic_rtfd_command,
             "Command that resets all attribute values to factory default.",
             "",
             {
+                SL_CLI_ARG_END,
+            });
+
+static const sl_cli_command_info_t cli_cmd_zcl_identify_cluster_trigger_effect = \
+SL_CLI_COMMAND(sli_zigbee_cli_zcl_identify_trigger_command,
+            "Command description for TriggerEffect",
+            "effect id" SL_CLI_UNIT_SEPARATOR "effect variant" SL_CLI_UNIT_SEPARATOR ,
+            {
+                SL_CLI_ARG_UINT8,
+                SL_CLI_ARG_UINT8,
                 SL_CLI_ARG_END,
             });
 
@@ -85,13 +125,29 @@ static const sl_cli_command_entry_t zcl_basic_cluster_command_table[] = {
     { "rtfd", &cli_cmd_zcl_basic_cluster_reset_to_factory_defaults, false },
     { NULL, NULL, false },
 };
+static const sl_cli_command_entry_t zcl_identify_cluster_command_table[] = {
+    { "id", &cli_cmd_zcl_identify_cluster_identify, false },
+    { "id", &cli_cmd_zcl_identify_cluster_identify, false },
+    { "query", &cli_cmd_zcl_identify_cluster_identify_query, false },
+    { "query", &cli_cmd_zcl_identify_cluster_identify_query, false },
+    { "ez-mode", &cli_cmd_zcl_identify_cluster_ez_mode_invoke, false },
+    { "ez-mode", &cli_cmd_zcl_identify_cluster_ez_mode_invoke, false },
+    { "trigger", &cli_cmd_zcl_identify_cluster_trigger_effect, false },
+    { "trigger", &cli_cmd_zcl_identify_cluster_trigger_effect, false },
+    { "on", &cli_cmd_zcl_identify_on_command, false},
+    { "off", &cli_cmd_zcl_identify_off_command, false},
+    { NULL, NULL, false },
+};
 
 // ZCL cluster commands
 static const sl_cli_command_info_t cli_cmd_basic_group = \
   SL_CLI_COMMAND_GROUP(zcl_basic_cluster_command_table, "ZCL basic cluster commands");
+static const sl_cli_command_info_t cli_cmd_identify_group = \
+  SL_CLI_COMMAND_GROUP(zcl_identify_cluster_command_table, "ZCL identify cluster commands");
 
 static const sl_cli_command_entry_t zcl_group_table[] = {
   { "basic", &cli_cmd_basic_group, false },
+  { "identify", &cli_cmd_identify_group, false },
   { "global", &cli_cmd_zcl_global_group, false },
   { "mfg-code", &cli_cmd_zcl_mfg_code_command, false},
   { "time", &cli_cmd_zcl_time_command, false},
@@ -119,6 +175,39 @@ sl_cli_command_group_t sl_cli_zcl_command_group =
 };
 
 
+WEAK(void sli_zigbee_cli_zcl_identify_ez_mode_command(sl_cli_command_arg_t *arguments)) {
+  uint8_t argumentTypes[1] =  { 
+    SL_ZCL_CLI_ARG_UINT8
+  }; 
+  sli_zigbee_zcl_simple_command(
+    ZCL_CLUSTER_SPECIFIC_COMMAND | ZCL_FRAME_CONTROL_CLIENT_TO_SERVER,  \
+    ZCL_IDENTIFY_CLUSTER_ID,                                                       \
+    2, \
+    arguments, \
+    argumentTypes);
+}
+
+WEAK(void sli_zigbee_cli_zcl_identify_id_command(sl_cli_command_arg_t *arguments)) {
+  uint8_t argumentTypes[1] =  { 
+    SL_ZCL_CLI_ARG_UINT16
+  }; 
+  sli_zigbee_zcl_simple_command(
+    ZCL_CLUSTER_SPECIFIC_COMMAND | ZCL_FRAME_CONTROL_CLIENT_TO_SERVER,  \
+    ZCL_IDENTIFY_CLUSTER_ID,                                                       \
+    0, \
+    arguments, \
+    argumentTypes);
+}
+
+WEAK(void sli_zigbee_cli_zcl_identify_query_command(sl_cli_command_arg_t *arguments)) {
+  sli_zigbee_zcl_simple_command(
+    ZCL_CLUSTER_SPECIFIC_COMMAND | ZCL_FRAME_CONTROL_CLIENT_TO_SERVER,  \
+    ZCL_IDENTIFY_CLUSTER_ID,                                                       \
+    1, \
+    arguments, \
+    NULL);
+}
+
 WEAK(void sli_zigbee_cli_zcl_basic_rtfd_command(sl_cli_command_arg_t *arguments)) {
   sli_zigbee_zcl_simple_command(
     ZCL_CLUSTER_SPECIFIC_COMMAND | ZCL_FRAME_CONTROL_CLIENT_TO_SERVER,  \
@@ -126,6 +215,19 @@ WEAK(void sli_zigbee_cli_zcl_basic_rtfd_command(sl_cli_command_arg_t *arguments)
     0, \
     arguments, \
     NULL);
+}
+
+WEAK(void sli_zigbee_cli_zcl_identify_trigger_command(sl_cli_command_arg_t *arguments)) {
+  uint8_t argumentTypes[2] =  { 
+    SL_ZCL_CLI_ARG_UINT8,
+    SL_ZCL_CLI_ARG_UINT8
+  }; 
+  sli_zigbee_zcl_simple_command(
+    ZCL_CLUSTER_SPECIFIC_COMMAND | ZCL_FRAME_CONTROL_CLIENT_TO_SERVER,  \
+    ZCL_IDENTIFY_CLUSTER_ID,                                                       \
+    64, \
+    arguments, \
+    argumentTypes);
 }
 
 #ifdef __cplusplus

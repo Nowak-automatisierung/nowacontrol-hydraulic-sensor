@@ -47,6 +47,12 @@ component:
   vendor: silabs
   id: iostream_recommended_console
 - package: simplicity_sdk
+  vendor: silabs
+  id: iostream_rtt
+- package: simplicity_sdk
+  vendor: silabs
+  id: power_manager_no_deepsleep
+- package: simplicity_sdk
   instance:
   - led0
   vendor: silabs
@@ -84,6 +90,9 @@ component:
 - package: simplicity_sdk
   vendor: silabs
   id: zigbee_source_route
+- package: simplicity_sdk
+  vendor: silabs
+  id: zigbee_update_tc_link_key
 - package: simplicity_sdk
   vendor: silabs
   id: zigbee_zcl_cli

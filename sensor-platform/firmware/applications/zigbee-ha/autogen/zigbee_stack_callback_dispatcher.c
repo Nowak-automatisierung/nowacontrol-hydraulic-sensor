@@ -231,7 +231,7 @@ sli_zigbee_af_stack_status_callback(status);
 
 sli_zigbee_af_network_steering_stack_status_callback(status);
 
-// sli_zigbee_af_update_tc_link_key_stack_status_callback(status); // removed - ZHA incompatible
+sli_zigbee_af_update_tc_link_key_stack_status_callback(status);
 (void)status;
 }
 
@@ -641,7 +641,7 @@ void sli_zigbee_af_zigbee_key_establishment(
 
 
 
-// sl_zigbee_af_update_tc_link_key_zigbee_key_establishment_cb(partner, status); // removed - ZHA incompatible
+sl_zigbee_af_update_tc_link_key_zigbee_key_establishment_cb(partner, status);
 (void)partner;
 (void)status;
 }
