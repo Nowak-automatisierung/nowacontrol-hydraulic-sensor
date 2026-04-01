@@ -43,8 +43,9 @@ static sl_zigbee_af_event_t measurement_event;
 static sl_zigbee_af_event_t steering_event;
 static sl_zigbee_af_event_t led_event;
 
-static bool    sensor_initialized  = false;
-static uint8_t steering_retry_count = 0;
+static bool    sensor_initialized     = false;
+static bool    s_conversion_started   = false;  /* non-blocking measurement FSM */
+static uint8_t steering_retry_count   = 0;
 
 // ---------------------------------------------------------------------------
 // Forward declarations
@@ -83,8 +84,18 @@ void sl_zigbee_af_main_init_cb(void)
   /* ---- 6. Auto-join: start network steering after 5 s ------------------ */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
-  /* Sensor HAL intentionally disabled until join is stable (PR 3) */
-  sensor_initialized = false;
+  /* ---- 7. Sensor HAL ------------------------------------------------------ */
+  sensor_hal_status_t hal_st = sensor_hal_init();
+  if (hal_st == SENSOR_HAL_OK) {
+    sensor_initialized = true;
+    sl_zigbee_app_debug_println("Sensor HAL: %d sensor(s) ready",
+                                sensor_hal_get_sensor_count());
+  } else {
+    sensor_initialized = false;
+    sl_zigbee_app_debug_println("Sensor HAL: init failed (%d) – check wiring on PB1",
+                                (int)hal_st);
+  }
+
   sl_zigbee_app_debug_println("NowaControl Hydraulic Sensor V1 - init complete");
 }
 
@@ -185,45 +196,75 @@ void sl_zigbee_af_stack_status_cb(sl_status_t status)
 // Periodic measurement event handler
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Non-blocking two-phase temperature measurement
+//
+// Phase 1 (s_conversion_started == false):
+//   Trigger simultaneous DS18B20 conversion, re-arm event after 800 ms.
+// Phase 2 (s_conversion_started == true):
+//   Read scratchpad, update ZCL attributes, re-arm event for next cycle.
+//   Uses (interval_ms - 800 ms) remainder so the cycle is exactly interval_ms.
+// ---------------------------------------------------------------------------
+
+#define SENSOR_CONVERSION_WAIT_MS  800u   /**< DS18B20 12-bit: 750 ms + margin */
+
 static void measurement_event_handler(sl_zigbee_af_event_t *event)
 {
   (void)event;
   uint32_t interval_ms = nowa_config_get()->measurement_interval_ms;
 
   if (!sensor_initialized) {
-    /* Sensor HAL intentionally disabled during join testing.
-     * Re-enable in PR 3 by calling sensor_hal_init() here. */
-    sl_zigbee_app_debug_println("Sensor HAL disabled - skipping measurement");
+    sl_zigbee_app_debug_println("Sensor HAL not ready - skipping cycle");
     sl_zigbee_af_event_set_delay_ms(&measurement_event, interval_ms);
     return;
   }
 
-  sensor_hal_status_t s = sensor_hal_measure();
-  const sensor_reading_t *r = sensor_hal_get_reading();
-
-  if (s == SENSOR_HAL_OK || s == SENSOR_HAL_ERR_PARTIAL) {
-    if (r->vorlauf_valid) {
-      update_temperature_attribute(ENDPOINT_VORLAUF, r->vorlauf_temp);
-      sl_zigbee_app_debug_println("Vorlauf:   %d.%02d C",
-                                  (int)r->vorlauf_temp,
-                                  (int)(r->vorlauf_temp * 100.0f) % 100);
-    }
-    if (r->ruecklauf_valid) {
-      update_temperature_attribute(ENDPOINT_RUECKLAUF, r->ruecklauf_temp);
-      sl_zigbee_app_debug_println("Ruecklauf: %d.%02d C",
-                                  (int)r->ruecklauf_temp,
-                                  (int)(r->ruecklauf_temp * 100.0f) % 100);
-    }
-    if (r->vorlauf_valid && r->ruecklauf_valid) {
-      sl_zigbee_app_debug_println("Delta-T:   %d.%02d C",
-                                  (int)r->delta_t,
-                                  (int)(r->delta_t * 100.0f) % 100);
+  if (!s_conversion_started) {
+    /* ---- Phase 1: start conversion, yield to stack for 800 ms ---------- */
+    sensor_hal_status_t s = sensor_hal_start_conversion();
+    if (s == SENSOR_HAL_OK) {
+      s_conversion_started = true;
+      sl_zigbee_af_event_set_delay_ms(&measurement_event, SENSOR_CONVERSION_WAIT_MS);
+    } else {
+      sl_zigbee_app_debug_println("Conversion start failed: %d – retry in %lu ms",
+                                  (int)s, (unsigned long)interval_ms);
+      sl_zigbee_af_event_set_delay_ms(&measurement_event, interval_ms);
     }
   } else {
-    sl_zigbee_app_debug_println("Measurement failed: %d", s);
-  }
+    /* ---- Phase 2: read results, update ZCL attributes ------------------- */
+    s_conversion_started = false;
 
-  sl_zigbee_af_event_set_delay_ms(&measurement_event, interval_ms);
+    sensor_hal_status_t s = sensor_hal_read_all();
+    const sensor_reading_t *r = sensor_hal_get_reading();
+
+    if (s == SENSOR_HAL_OK || s == SENSOR_HAL_ERR_PARTIAL) {
+      if (r->vorlauf_valid) {
+        update_temperature_attribute(ENDPOINT_VORLAUF, r->vorlauf_temp);
+        sl_zigbee_app_debug_println("Vorlauf:   %d.%02d C",
+                                    (int)r->vorlauf_temp,
+                                    (int)(r->vorlauf_temp * 100.0f) % 100);
+      }
+      if (r->ruecklauf_valid) {
+        update_temperature_attribute(ENDPOINT_RUECKLAUF, r->ruecklauf_temp);
+        sl_zigbee_app_debug_println("Ruecklauf: %d.%02d C",
+                                    (int)r->ruecklauf_temp,
+                                    (int)(r->ruecklauf_temp * 100.0f) % 100);
+      }
+      if (r->vorlauf_valid && r->ruecklauf_valid) {
+        sl_zigbee_app_debug_println("Delta-T:   %d.%02d C",
+                                    (int)r->delta_t,
+                                    (int)(r->delta_t * 100.0f) % 100);
+      }
+    } else {
+      sl_zigbee_app_debug_println("Read failed: %d", (int)s);
+    }
+
+    /* Schedule next measurement cycle, accounting for conversion time */
+    uint32_t remaining_ms = (interval_ms > SENSOR_CONVERSION_WAIT_MS)
+                            ? (interval_ms - SENSOR_CONVERSION_WAIT_MS)
+                            : interval_ms;
+    sl_zigbee_af_event_set_delay_ms(&measurement_event, remaining_ms);
+  }
 }
 
 // ---------------------------------------------------------------------------
