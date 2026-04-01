@@ -311,6 +311,7 @@ add_library(slc OBJECT
     "${SDK_PATH}/zigbee/stack/zll/zll-stubs.c"
     "${SDK_PATH}/zigbee/util/plugin/byte_utilities/byte-utilities.c"
     "../app.c"
+    "../nowa_config.c"
     "../autogen/sl_cli_command_table.c"
     "../autogen/sl_cli_instances.c"
     "../autogen/sl_cluster_service_gen.c"

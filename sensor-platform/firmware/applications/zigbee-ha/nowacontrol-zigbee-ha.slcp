@@ -22,6 +22,7 @@ readme:
 source:
 - path: main.c
 - path: app.c
+- path: nowa_config.c
 tag:
 - hwfilter:board:simple_led:led0
 - hwfilter:device:device_supports_zigbee

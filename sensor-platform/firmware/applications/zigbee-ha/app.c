@@ -14,37 +14,47 @@
 #include "app/framework/include/af.h"
 #include "network-steering.h"
 #include "sl_simple_led_instances.h"
+#include "sl_gpio.h"
+#include "sl_device_gpio.h"     /* PB4, PB5, PD4 macros */
 #include "sensor_hal.h"
+#include "nowa_config.h"
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Product identity strings (ZCL char-string: 1-byte length + UTF-8, no NUL)
+// NOTE: lengths must match exactly the byte counts below.
 // ---------------------------------------------------------------------------
+#define NOWA_MANUFACTURER_NAME   "\x0BnowaControl"        /* 11 chars */
+#define NOWA_MODEL_IDENTIFIER    "\x13Hydraulic Sensor V1" /* 19 chars */
+#define NOWA_SW_BUILD_ID         "\x0E""2026.04.01-1.0"   /* 14 chars */
+#define NOWA_HW_VERSION          ((uint8_t)1u)
+/* ZCL power source 0x03 = single battery; already the generated default */
+#define NOWA_POWER_SOURCE_ZCL    ((uint8_t)0x03u)
 
-/** Measurement interval in milliseconds (default: 60 seconds) */
-#define MEASUREMENT_INTERVAL_MS  60000
-
-/** Zigbee endpoint IDs */
+// ---------------------------------------------------------------------------
+// Zigbee endpoint IDs
+// ---------------------------------------------------------------------------
 #define ENDPOINT_VORLAUF    1
 #define ENDPOINT_RUECKLAUF  2
 
 // ---------------------------------------------------------------------------
-// Event for periodic measurement
+// Application events
 // ---------------------------------------------------------------------------
-
 static sl_zigbee_af_event_t measurement_event;
 static sl_zigbee_af_event_t steering_event;
 static sl_zigbee_af_event_t led_event;
-static bool sensor_initialized = false;
+
+static bool    sensor_initialized  = false;
 static uint8_t steering_retry_count = 0;
 
 // ---------------------------------------------------------------------------
 // Forward declarations
 // ---------------------------------------------------------------------------
-
 static void measurement_event_handler(sl_zigbee_af_event_t *event);
 static void steering_event_handler(sl_zigbee_af_event_t *event);
 static void led_event_handler(sl_zigbee_af_event_t *event);
 static void update_temperature_attribute(uint8_t endpoint, float temperature);
+static void init_external_antenna(void);
+static void init_basic_cluster_attributes(void);
 
 // ---------------------------------------------------------------------------
 // Application init (called once at startup)
@@ -52,20 +62,106 @@ static void update_temperature_attribute(uint8_t endpoint, float temperature);
 
 void sl_zigbee_af_main_init_cb(void)
 {
-  sl_zigbee_af_event_init(&measurement_event, measurement_event_handler);
-  sl_zigbee_af_event_init(&steering_event, steering_event_handler);
-  sl_zigbee_af_event_init(&led_event, led_event_handler);
+  /* ---- 1. Persistent configuration ------------------------------------ */
+  nowa_config_init();
 
-  /* Blink LED to confirm firmware is running */
+  /* ---- 2. External antenna --------------------------------------------- */
+  init_external_antenna();
+
+  /* ---- 3. Events ------------------------------------------------------- */
+  sl_zigbee_af_event_init(&measurement_event, measurement_event_handler);
+  sl_zigbee_af_event_init(&steering_event,    steering_event_handler);
+  sl_zigbee_af_event_init(&led_event,         led_event_handler);
+
+  /* ---- 4. Basic Cluster product identity -------------------------------- */
+  init_basic_cluster_attributes();
+
+  /* ---- 5. LED startup blink -------------------------------------------- */
   sl_led_turn_on(&sl_led_led0);
   sl_zigbee_af_event_set_delay_ms(&led_event, 500);
 
-  /* Auto-join: start network steering after 5 seconds if not on a network */
+  /* ---- 6. Auto-join: start network steering after 5 s ------------------ */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
-  /* Sensor HAL init DISABLED for ZHA join test - re-enable after join works */
+  /* Sensor HAL intentionally disabled until join is stable (PR 3) */
   sensor_initialized = false;
-  sl_zigbee_app_debug_println("Sensor HAL disabled for join test");
+  sl_zigbee_app_debug_println("NowaControl Hydraulic Sensor V1 - init complete");
+}
+
+// ---------------------------------------------------------------------------
+// External antenna initialisation
+//
+// XIAO MG24 Sense RF switch:
+//   PB5 = RF_SW_CTRL – HIGH: RF switch powered / enabled
+//   PB4 = ANT_SW     – HIGH: external U.FL/SMA antenna selected
+//                    – LOW:  onboard PCB antenna selected
+// ---------------------------------------------------------------------------
+static void init_external_antenna(void)
+{
+  sl_gpio_set_pin_mode(PB5, SL_GPIO_MODE_PUSH_PULL, true);  /* RF switch enable  */
+  sl_gpio_set_pin_mode(PB4, SL_GPIO_MODE_PUSH_PULL, true);  /* External antenna  */
+  sl_zigbee_app_debug_println("Antenna: external (PB5=1, PB4=1)");
+}
+
+// ---------------------------------------------------------------------------
+// Populate Basic Cluster attributes so ZHA shows correct device identity.
+// Must be called after sl_zigbee_af_event_init() but before network steering.
+// ---------------------------------------------------------------------------
+static void init_basic_cluster_attributes(void)
+{
+  sl_zigbee_af_status_t st;
+
+  /* Manufacturer name – "nowaControl" */
+  static const uint8_t mfr[] = NOWA_MANUFACTURER_NAME;
+  st = sl_zigbee_af_write_server_attribute(
+         ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
+         ZCL_MANUFACTURER_NAME_ATTRIBUTE_ID,
+         (uint8_t *)mfr, ZCL_CHAR_STRING_ATTRIBUTE_TYPE);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("BasicCluster: mfr write failed 0x%02X", st);
+  }
+
+  /* Model identifier – "Hydraulic Sensor V1" */
+  static const uint8_t model[] = NOWA_MODEL_IDENTIFIER;
+  st = sl_zigbee_af_write_server_attribute(
+         ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
+         ZCL_MODEL_IDENTIFIER_ATTRIBUTE_ID,
+         (uint8_t *)model, ZCL_CHAR_STRING_ATTRIBUTE_TYPE);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("BasicCluster: model write failed 0x%02X", st);
+  }
+
+  /* Software build ID – "2026.04.01-1.0" */
+  static const uint8_t sw_build[] = NOWA_SW_BUILD_ID;
+  st = sl_zigbee_af_write_server_attribute(
+         ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
+         ZCL_SW_BUILD_ID_ATTRIBUTE_ID,
+         (uint8_t *)sw_build, ZCL_CHAR_STRING_ATTRIBUTE_TYPE);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("BasicCluster: sw_build write failed 0x%02X", st);
+  }
+
+  /* Hardware version */
+  uint8_t hw_ver = NOWA_HW_VERSION;
+  st = sl_zigbee_af_write_server_attribute(
+         ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
+         ZCL_HW_VERSION_ATTRIBUTE_ID,
+         &hw_ver, ZCL_INT8U_ATTRIBUTE_TYPE);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("BasicCluster: hw_ver write failed 0x%02X", st);
+  }
+
+  /* Power source: 0x03 = single-phase battery */
+  uint8_t pwr_src = NOWA_POWER_SOURCE_ZCL;
+  st = sl_zigbee_af_write_server_attribute(
+         ENDPOINT_VORLAUF, ZCL_BASIC_CLUSTER_ID,
+         ZCL_POWER_SOURCE_ATTRIBUTE_ID,
+         &pwr_src, ZCL_ENUM8_ATTRIBUTE_TYPE);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("BasicCluster: pwr_src write failed 0x%02X", st);
+  }
+
+  sl_zigbee_app_debug_println("BasicCluster: identity written (nowaControl / Hydraulic Sensor V1)");
 }
 
 // ---------------------------------------------------------------------------
@@ -76,17 +172,11 @@ void sl_zigbee_af_stack_status_cb(sl_status_t status)
 {
   if (status == SL_STATUS_NETWORK_UP) {
     sl_zigbee_app_debug_println("Network UP - starting temperature measurements");
-
-    /* Cancel any pending steering retry - we are joined */
     sl_zigbee_af_event_set_inactive(&steering_event);
-
-    /* Start periodic measurement */
-    sl_zigbee_af_event_set_delay_ms(&measurement_event, 5000); /* First read after 5s */
+    sl_zigbee_af_event_set_delay_ms(&measurement_event, 5000);
   } else if (status == SL_STATUS_NETWORK_DOWN) {
     sl_zigbee_app_debug_println("Network DOWN - will retry steering in 5s");
     sl_zigbee_af_event_set_inactive(&measurement_event);
-
-    /* Restart network steering so device rejoins automatically */
     sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
   }
 }
@@ -98,74 +188,67 @@ void sl_zigbee_af_stack_status_cb(sl_status_t status)
 static void measurement_event_handler(sl_zigbee_af_event_t *event)
 {
   (void)event;
+  uint32_t interval_ms = nowa_config_get()->measurement_interval_ms;
 
   if (!sensor_initialized) {
     /* Sensor HAL intentionally disabled during join testing.
-     * Re-enable by calling sensor_hal_init() here once join is stable. */
+     * Re-enable in PR 3 by calling sensor_hal_init() here. */
     sl_zigbee_app_debug_println("Sensor HAL disabled - skipping measurement");
-    sl_zigbee_af_event_set_delay_ms(&measurement_event, MEASUREMENT_INTERVAL_MS);
+    sl_zigbee_af_event_set_delay_ms(&measurement_event, interval_ms);
     return;
   }
 
-  /* Perform blocking measurement (~750ms) */
-  sensor_hal_status_t status = sensor_hal_measure();
-  const sensor_reading_t *reading = sensor_hal_get_reading();
+  sensor_hal_status_t s = sensor_hal_measure();
+  const sensor_reading_t *r = sensor_hal_get_reading();
 
-  if (status == SENSOR_HAL_OK || status == SENSOR_HAL_ERR_PARTIAL) {
-    /* Update Vorlauf (Endpoint 1) */
-    if (reading->vorlauf_valid) {
-      update_temperature_attribute(ENDPOINT_VORLAUF, reading->vorlauf_temp);
-      sl_zigbee_app_debug_println("Vorlauf: %d.%02d C",
-                                  (int)reading->vorlauf_temp,
-                                  (int)(reading->vorlauf_temp * 100) % 100);
+  if (s == SENSOR_HAL_OK || s == SENSOR_HAL_ERR_PARTIAL) {
+    if (r->vorlauf_valid) {
+      update_temperature_attribute(ENDPOINT_VORLAUF, r->vorlauf_temp);
+      sl_zigbee_app_debug_println("Vorlauf:   %d.%02d C",
+                                  (int)r->vorlauf_temp,
+                                  (int)(r->vorlauf_temp * 100.0f) % 100);
     }
-
-    /* Update Ruecklauf (Endpoint 2) */
-    if (reading->ruecklauf_valid) {
-      update_temperature_attribute(ENDPOINT_RUECKLAUF, reading->ruecklauf_temp);
+    if (r->ruecklauf_valid) {
+      update_temperature_attribute(ENDPOINT_RUECKLAUF, r->ruecklauf_temp);
       sl_zigbee_app_debug_println("Ruecklauf: %d.%02d C",
-                                  (int)reading->ruecklauf_temp,
-                                  (int)(reading->ruecklauf_temp * 100) % 100);
+                                  (int)r->ruecklauf_temp,
+                                  (int)(r->ruecklauf_temp * 100.0f) % 100);
     }
-
-    /* Log delta-T */
-    if (reading->vorlauf_valid && reading->ruecklauf_valid) {
-      sl_zigbee_app_debug_println("Delta-T: %d.%02d C",
-                                  (int)reading->delta_t,
-                                  (int)(reading->delta_t * 100) % 100);
+    if (r->vorlauf_valid && r->ruecklauf_valid) {
+      sl_zigbee_app_debug_println("Delta-T:   %d.%02d C",
+                                  (int)r->delta_t,
+                                  (int)(r->delta_t * 100.0f) % 100);
     }
   } else {
-    sl_zigbee_app_debug_println("Measurement failed: %d", status);
+    sl_zigbee_app_debug_println("Measurement failed: %d", s);
   }
 
-  /* Schedule next measurement */
-  sl_zigbee_af_event_set_delay_ms(&measurement_event, MEASUREMENT_INTERVAL_MS);
+  sl_zigbee_af_event_set_delay_ms(&measurement_event, interval_ms);
 }
 
 // ---------------------------------------------------------------------------
-// Update Zigbee Temperature Measurement cluster attribute
+// Update ZCL Temperature Measurement cluster attribute
 // ---------------------------------------------------------------------------
 
 static void update_temperature_attribute(uint8_t endpoint, float temperature)
 {
-  /* ZCL Temperature Measurement: value in units of 0.01 C (int16s)
-   * Example: 25.50 C -> 2550 */
+  /* ZCL value: units of 0.01 °C  (int16s)  e.g. 25.50 °C → 2550 */
   int16_t zcl_temp = (int16_t)(temperature * 100.0f);
 
-  sl_zigbee_af_status_t status = sl_zigbee_af_write_server_attribute(
+  sl_zigbee_af_status_t st = sl_zigbee_af_write_server_attribute(
       endpoint,
       ZCL_TEMP_MEASUREMENT_CLUSTER_ID,
       ZCL_TEMP_MEASURED_VALUE_ATTRIBUTE_ID,
       (uint8_t *)&zcl_temp,
       ZCL_INT16S_ATTRIBUTE_TYPE);
 
-  if (status != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
-    sl_zigbee_app_debug_println("Attr write EP%d failed: 0x%02X", endpoint, status);
+  if (st != SL_ZIGBEE_ZCL_STATUS_SUCCESS) {
+    sl_zigbee_app_debug_println("Attr write EP%d failed: 0x%02X", endpoint, st);
   }
 }
 
 // ---------------------------------------------------------------------------
-// LED blink handler - visual confirmation that firmware is running
+// LED blink handler
 // ---------------------------------------------------------------------------
 
 static void led_event_handler(sl_zigbee_af_event_t *event)
@@ -173,39 +256,35 @@ static void led_event_handler(sl_zigbee_af_event_t *event)
   (void)event;
   sl_led_toggle(&sl_led_led0);
 
-  /* Blink fast (500ms) while not on network, slow (2s) when joined */
-  sl_status_t net_status = sl_zigbee_af_network_state();
-  if (net_status == SL_ZIGBEE_JOINED_NETWORK) {
-    sl_zigbee_af_event_set_delay_ms(&led_event, 2000);
+  if (sl_zigbee_af_network_state() == SL_ZIGBEE_JOINED_NETWORK) {
+    sl_zigbee_af_event_set_delay_ms(&led_event, 2000);  /* slow = joined  */
   } else {
-    sl_zigbee_af_event_set_delay_ms(&led_event, 500);
+    sl_zigbee_af_event_set_delay_ms(&led_event, 500);   /* fast = joining */
   }
 }
 
 // ---------------------------------------------------------------------------
-// Auto-join: start network steering if not on a network
+// Network steering event handler (auto-join / rejoin)
 // ---------------------------------------------------------------------------
 
 static void steering_event_handler(sl_zigbee_af_event_t *event)
 {
   (void)event;
 
-  /* Only start steering if we are NOT already on a network */
-  sl_status_t net_status = sl_zigbee_af_network_state();
-  if (net_status != SL_ZIGBEE_JOINED_NETWORK) {
+  if (sl_zigbee_af_network_state() != SL_ZIGBEE_JOINED_NETWORK) {
     sl_zigbee_app_debug_println("Not on network - starting steering (attempt %d)...",
                                 steering_retry_count + 1);
-    sl_status_t steer_status = sl_zigbee_af_network_steering_start();
-    sl_zigbee_app_debug_println("Steering start returned: 0x%04X", steer_status);
+    sl_status_t st = sl_zigbee_af_network_steering_start();
+    sl_zigbee_app_debug_println("Steering start: 0x%04X", st);
     steering_retry_count++;
   } else {
     sl_zigbee_app_debug_println("Already on network - skipping steering");
-    sl_led_turn_on(&sl_led_led0); /* Solid LED = joined */
+    sl_led_turn_on(&sl_led_led0);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Network steering callback
+// Network steering completion callback
 // ---------------------------------------------------------------------------
 
 void sl_zigbee_af_network_steering_complete_cb(sl_status_t status,
@@ -213,16 +292,15 @@ void sl_zigbee_af_network_steering_complete_cb(sl_status_t status,
                                                uint8_t joinAttempts,
                                                uint8_t finalState)
 {
-  UNUSED_VAR(totalBeacons);
-  UNUSED_VAR(joinAttempts);
   UNUSED_VAR(finalState);
-  sl_zigbee_app_debug_println("Join complete: 0x%04X (beacons=%d, attempts=%d)",
-                              status, totalBeacons, joinAttempts);
+  sl_zigbee_app_debug_println(
+    "Join complete: 0x%04X (beacons=%d, attempts=%d)",
+    status, totalBeacons, joinAttempts);
 
   if (status != SL_STATUS_OK) {
-    /* Retry steering every 30 seconds until joined (no limit) */
-    sl_zigbee_app_debug_println("Steering failed - retry in 30s (attempt %d)...",
-                                steering_retry_count);
+    sl_zigbee_app_debug_println(
+      "Steering failed - retry in 30s (attempt %d)",
+      steering_retry_count);
     sl_zigbee_af_event_set_delay_ms(&steering_event, 30000);
   }
 }
