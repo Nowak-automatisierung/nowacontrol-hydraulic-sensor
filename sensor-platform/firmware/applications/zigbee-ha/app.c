@@ -19,6 +19,7 @@
 #include "sensor_hal.h"
 #include "nowa_config.h"
 #include "nowa_bat.h"
+#include "nowa_cli.h"
 
 // ---------------------------------------------------------------------------
 // Product identity strings (ZCL char-string: 1-byte length + UTF-8, no NUL)
@@ -68,28 +69,31 @@ void sl_zigbee_af_main_init_cb(void)
   /* ---- 1. Persistent configuration ------------------------------------ */
   nowa_config_init();
 
-  /* ---- 2. External antenna --------------------------------------------- */
+  /* ---- 2. CLI commands ------------------------------------------------- */
+  nowa_cli_init();
+
+  /* ---- 3. External antenna --------------------------------------------- */
   init_external_antenna();
 
-  /* ---- 3. Events ------------------------------------------------------- */
+  /* ---- 4. Events ------------------------------------------------------- */
   sl_zigbee_af_event_init(&measurement_event, measurement_event_handler);
   sl_zigbee_af_event_init(&steering_event,    steering_event_handler);
   sl_zigbee_af_event_init(&led_event,         led_event_handler);
 
-  /* ---- 4. Basic Cluster product identity -------------------------------- */
+  /* ---- 5. Basic Cluster product identity -------------------------------- */
   init_basic_cluster_attributes();
 
-  /* ---- 5. LED startup blink -------------------------------------------- */
+  /* ---- 6. LED startup blink -------------------------------------------- */
   sl_led_turn_on(&sl_led_led0);
   sl_zigbee_af_event_set_delay_ms(&led_event, 500);
 
-  /* ---- 6. Auto-join: start network steering after 5 s ------------------ */
+  /* ---- 7. Auto-join: start network steering after 5 s ------------------ */
   sl_zigbee_af_event_set_delay_ms(&steering_event, 5000);
 
-  /* ---- 7. Battery ADC ----------------------------------------------------- */
+  /* ---- 8. Battery ADC -------------------------------------------------- */
   bat_initialized = (nowa_bat_init() == SL_STATUS_OK);
 
-  /* ---- 8. Sensor HAL ------------------------------------------------------ */
+  /* ---- 9. Sensor HAL --------------------------------------------------- */
   sensor_hal_status_t hal_st = sensor_hal_init();
   if (hal_st == SENSOR_HAL_OK) {
     sensor_initialized = true;

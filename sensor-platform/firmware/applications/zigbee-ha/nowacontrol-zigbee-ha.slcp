@@ -24,6 +24,7 @@ source:
 - path: app.c
 - path: nowa_config.c
 - path: nowa_bat.c
+- path: nowa_cli.c
 tag:
 - hwfilter:board:simple_led:led0
 - hwfilter:device:device_supports_zigbee

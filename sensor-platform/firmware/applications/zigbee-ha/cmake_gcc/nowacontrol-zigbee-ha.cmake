@@ -314,6 +314,7 @@ add_library(slc OBJECT
     "../app.c"
     "../nowa_config.c"
     "../nowa_bat.c"
+    "../nowa_cli.c"
     "../autogen/sl_cli_command_table.c"
     "../autogen/sl_cli_instances.c"
     "../autogen/sl_cluster_service_gen.c"
