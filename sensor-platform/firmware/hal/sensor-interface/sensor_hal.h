@@ -29,19 +29,19 @@ extern "C" {
 // ---------------------------------------------------------------------------
 // Configuration: GPIO pin for 1-Wire bus
 // ---------------------------------------------------------------------------
-// XIAO MG24 pin mapping:
-//   D0 = PA4, D1 = PA5, D2 = PB1, D3 = PB2, D4 = PB3, D5 = PB4
-//   D6 = PC7, D7 = PC9, D8 = PD2, D9 = PD3, D10 = PD4
+// XIAO MG24 pin mapping (official Seeed XIAO MG24):
+//   D0 = PA4, D1 = PA5, D2 = PC2, D3 = PC3, D4 = PC0, D5 = PC1
+//   D6 = PC6, D7 = PC7, D8 = PD2, D9 = PD3, D10 = PD4
 //
-// Default: D2 (PB1) for 1-Wire data line
+// Default: D2 (PC2) for 1-Wire data line
 // ---------------------------------------------------------------------------
 
 #ifndef SENSOR_HAL_OW_PORT
-#define SENSOR_HAL_OW_PORT   gpioPortB
+#define SENSOR_HAL_OW_PORT   gpioPortC
 #endif
 
 #ifndef SENSOR_HAL_OW_PIN
-#define SENSOR_HAL_OW_PIN    1
+#define SENSOR_HAL_OW_PIN    2
 #endif
 
 // ---------------------------------------------------------------------------
@@ -95,6 +95,7 @@ typedef struct {
  * @return SENSOR_HAL_OK on success, error code otherwise.
  */
 sensor_hal_status_t sensor_hal_init(void);
+sensor_hal_status_t sensor_hal_rescan(void);
 
 /**
  * @brief Start temperature conversion on all sensors.
@@ -161,6 +162,7 @@ float sensor_hal_get_delta_t(void);
  * @return Number of DS18B20 sensors on the bus (0, 1, or 2).
  */
 uint8_t sensor_hal_get_sensor_count(void);
+const ds18b20_sensor_t* sensor_hal_get_sensor(uint8_t index);
 
 /**
  * @brief Assign a specific ROM ID to Vorlauf or Ruecklauf.

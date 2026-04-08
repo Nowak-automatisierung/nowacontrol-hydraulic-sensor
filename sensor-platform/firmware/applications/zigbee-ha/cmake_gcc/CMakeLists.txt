@@ -16,10 +16,14 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface)
 include(nowacontrol-zigbee-ha.cmake)
 
 add_executable(nowacontrol-zigbee-ha
+    ${SDK_PATH}/platform_core/platform/emlib/src/em_iadc.c
     # Sensor HAL sources
     ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/onewire.c
     ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/ds18b20.c
     ${CMAKE_CURRENT_LIST_DIR}/../../../hal/sensor-interface/sensor_hal.c
+    ${SDK_PATH}/zigbee/app/framework/plugin/reporting/reporting.c
+    ${SDK_PATH}/zigbee/app/framework/plugin/reporting/reporting-default-configuration.c
+    ${SDK_PATH}/zigbee/app/framework/plugin/reporting/reporting-cb.c
 )
 
 target_include_directories(nowacontrol-zigbee-ha PUBLIC

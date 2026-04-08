@@ -1,4 +1,5 @@
 #include "sl_event_handler.h"
+#include "app/framework/include/af.h"
 
 #include "sl_clock_manager.h"
 #include "sl_rail_util_compatible_pa.h"
@@ -20,6 +21,9 @@
 #include "sl_token_manager_api.h"
 #include "nvm3_default.h"
 #include "sl_iostream_handles.h"
+#include "app/framework/plugin/reporting/reporting.h"
+
+void sl_zigbee_af_reporting_init_cb(uint8_t init_level);
 
 void sli_driver_permanent_allocation(void)
 {
@@ -81,6 +85,8 @@ void sl_stack_init(void)
 
 void sl_internal_app_init(void)
 {
+  sl_zigbee_af_reporting_init_cb(SL_ZIGBEE_INIT_LEVEL_EVENT);
+  sl_zigbee_af_reporting_init_cb(SL_ZIGBEE_INIT_LEVEL_DONE);
 }
 
 void sli_platform_process_action(void)

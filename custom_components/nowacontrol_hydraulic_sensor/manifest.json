@@ -1,0 +1,13 @@
+﻿{
+  "domain": "nowacontrol_hydraulic_sensor",
+  "name": "nowaControl Hydraulic Sensor",
+  "version": "0.1.0",
+  "documentation": "https://github.com/Nowak-automatisierung/nowacontrol-hydraulic-sensor",
+  "issue_tracker": "https://github.com/Nowak-automatisierung/nowacontrol-hydraulic-sensor/issues",
+  "dependencies": [],
+  "codeowners": ["@Nowak-automatisierung"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "integration_type": "device",
+  "loggers": ["custom_components.nowacontrol_hydraulic_sensor"]
+}

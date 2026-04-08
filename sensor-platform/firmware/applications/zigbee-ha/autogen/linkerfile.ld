@@ -32,12 +32,23 @@
    FLASH      (rx)  : ORIGIN = 0x8006000, LENGTH = 0x178000
    RAM        (rwx) : ORIGIN = 0x20000004, LENGTH = 0x3fffc
    BOOTLOADER_RESET_REGION (rwx) : ORIGIN = 0x20000000, LENGTH = 0x4
+   DUMMY      (!a) : ORIGIN = 0x817e000, LENGTH = 0x178000
  }
 
 ENTRY(Reset_Handler)
 
 SECTIONS
 {
+   /* This is where we handle flash storage blocks. We use dummy sections for finding the configured
+   * block sizes, and then use the final size to manually allocate space at the end of flash. */
+  .internal_storage (NOLOAD) : {
+    KEEP(*(.internal_storage*))
+  } > DUMMY
+
+
+  .nvm (NOLOAD) : {
+    KEEP(*(.simee*))
+  } > DUMMY
 
   .vectors :
   {
@@ -98,7 +109,7 @@ SECTIONS
   __lma_ramfuncs_start__ = LOADADDR(text_application_ram);
   __lma_ramfuncs_end__ = LOADADDR(text_application_ram) + SIZEOF(text_application_ram);
 
-  .rodata (READONLY):
+  .rodata :
   {
   } > FLASH
 
@@ -143,7 +154,7 @@ SECTIONS
   } > FLASH
   __exidx_end = .;
 
-  .copy.table (READONLY):
+  .copy.table :
   {
     . = ALIGN(4);
     __copy_table_start__ = .;
@@ -162,7 +173,7 @@ SECTIONS
     __copy_table_end__ = .;
   } > FLASH
 
-  .zero.table (READONLY):
+  .zero.table :
   {
     . = ALIGN(4);
     __zero_table_start__ = .;
@@ -173,7 +184,7 @@ SECTIONS
     */
 
     __zero_table_end__ = .;
-    __etext = .;
+    __etext = ALIGN(4);
   } > FLASH
 
   .data :
@@ -229,16 +240,6 @@ heap_size = heap_limit - __HeapBase;
 
   __ram_end__ = 0x20000004 + 0x3fffc;
   __main_flash_end__ = 0x8006000 + 0x178000;
-   /* This is where we handle flash storage blocks. We use dummy sections for finding the configured
-   * block sizes and then "place" them at the end of flash when the size is known. */
-  .internal_storage (DSECT) : {
-    KEEP(*(.internal_storage*))
-  } > FLASH
-
-
-  .nvm (DSECT) : {
-    KEEP(*(.simee*))
-  } > FLASH
 
   __ramfuncs_start__ = __vma_ramfuncs_start__;
   __ramfuncs_end__ = __vma_ramfuncs_end__;
@@ -254,5 +255,4 @@ heap_size = heap_limit - __HeapBase;
 
   app_flash_end = 0x8006000 + 0x178000;
   ASSERT( (linker_nvm_begin + SIZEOF(.nvm)) <= app_flash_end, "NVM3 is excessing the flash size !")
-
 }

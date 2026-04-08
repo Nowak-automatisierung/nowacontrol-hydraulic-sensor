@@ -1,0 +1,77 @@
+name: Validate Home Assistant Package
+
+on:
+  pull_request:
+    paths:
+      - "custom_components/**"
+      - "homeassistant/zha_quirks/**"
+      - "hacs.json"
+      - ".github/workflows/validate-homeassistant.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "custom_components/**"
+      - "homeassistant/zha_quirks/**"
+      - "hacs.json"
+      - ".github/workflows/validate-homeassistant.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate required files
+        shell: bash
+        run: |
+          test -f hacs.json
+          test -f custom_components/nowacontrol_hydraulic_sensor/manifest.json
+          test -f custom_components/nowacontrol_hydraulic_sensor/__init__.py
+          test -f custom_components/nowacontrol_hydraulic_sensor/const.py
+          test -f custom_components/nowacontrol_hydraulic_sensor/services.py
+          test -f custom_components/nowacontrol_hydraulic_sensor/services.yaml
+          test -f custom_components/nowacontrol_hydraulic_sensor/quirks/nowacontrol_hydraulic_sensor_v1.py
+          test -f homeassistant/zha_quirks/nowacontrol_hydraulic_sensor_v1.py
+
+      - name: Validate JSON metadata
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("custom_components/nowacontrol_hydraulic_sensor/manifest.json").read_text(encoding="utf-8"))
+          hacs = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+
+          required_manifest = {"domain", "documentation", "issue_tracker", "codeowners", "name", "version"}
+          missing_manifest = sorted(required_manifest - manifest.keys())
+          if missing_manifest:
+              raise SystemExit(f"manifest.json missing keys: {missing_manifest}")
+
+          required_hacs = {"name", "homeassistant", "iot_class"}
+          missing_hacs = sorted(required_hacs - hacs.keys())
+          if missing_hacs:
+              raise SystemExit(f"hacs.json missing keys: {missing_hacs}")
+
+          print("manifest.json and hacs.json look structurally valid")
+          PY
+
+      - name: Compile Python modules
+        shell: bash
+        run: |
+          python -m compileall custom_components homeassistant/zha_quirks
+
+      - name: HACS readiness note
+        shell: bash
+        run: |
+          if [ ! -f brand/icon.png ]; then
+            echo "::warning::brand/icon.png is not present yet. HACS publish docs recommend brand assets for polished distribution."
+          fi

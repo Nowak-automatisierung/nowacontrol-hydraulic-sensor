@@ -89,6 +89,9 @@ component:
   id: zigbee_pro_stack
 - package: simplicity_sdk
   vendor: silabs
+  id: zigbee_reporting
+- package: simplicity_sdk
+  vendor: silabs
   id: zigbee_scan_dispatch
 - package: simplicity_sdk
   vendor: silabs
@@ -157,4 +160,3 @@ configuration:
 ui_hints:
   highlight:
   - path: readme.md
-

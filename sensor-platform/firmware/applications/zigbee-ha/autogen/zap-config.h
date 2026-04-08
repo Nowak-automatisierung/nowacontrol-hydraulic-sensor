@@ -16,15 +16,15 @@
 
 #if BIGENDIAN_CPU
 #define ZCL_GENERATED_DEFAULTS { \
-  0x15, 'N', 'o', 'w', 'a', 'k', ' ', 'A', 'u', 't', 'o', 'm', 'a', 't', 'i', 's', 'i', 'e', 'r', 'u', 'n', 'g', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0,DEFAULT value for cluster: Basic, attribute: manufacturer name, side: server */ \
-  0x15, 'N', 'o', 'w', 'a', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'H', 'y', 'd', 'r', 'o', 'T', 'e', 'm', 'p', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 33,DEFAULT value for cluster: Basic, attribute: model identifier, side: server */ \
-  0x05, '1', '.', '0', '.', '0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 66,DEFAULT value for cluster: Basic, attribute: sw build id, side: server */ \
+  0x0B, 'n', 'o', 'w', 'a', 'C', 'o', 'n', 't', 'r', 'o', 'l', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0,DEFAULT value for cluster: Basic, attribute: manufacturer name, side: server */ \
+  0x13, 'H', 'y', 'd', 'r', 'a', 'u', 'l', 'i', 'c', ' ', 'S', 'e', 'n', 's', 'o', 'r', ' ', 'V', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 33,DEFAULT value for cluster: Basic, attribute: model identifier, side: server */ \
+  0x0E, '2', '0', '2', '6', '.', '0', '4', '.', '0', '1', '-', '1', '.', '0', 0, 0, /* 66,DEFAULT value for cluster: Basic, attribute: sw build id, side: server */ \
 }
 #else //!BIGENDIAN_CPU
 #define ZCL_GENERATED_DEFAULTS { \
-  0x15, 'N', 'o', 'w', 'a', 'k', ' ', 'A', 'u', 't', 'o', 'm', 'a', 't', 'i', 's', 'i', 'e', 'r', 'u', 'n', 'g', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0,DEFAULT value for cluster: Basic, attribute: manufacturer name, side: server */ \
-  0x15, 'N', 'o', 'w', 'a', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'H', 'y', 'd', 'r', 'o', 'T', 'e', 'm', 'p', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 33,DEFAULT value for cluster: Basic, attribute: model identifier, side: server */ \
-  0x05, '1', '.', '0', '.', '0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 66,DEFAULT value for cluster: Basic, attribute: sw build id, side: server */ \
+  0x0B, 'n', 'o', 'w', 'a', 'C', 'o', 'n', 't', 'r', 'o', 'l', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0,DEFAULT value for cluster: Basic, attribute: manufacturer name, side: server */ \
+  0x13, 'H', 'y', 'd', 'r', 'a', 'u', 'l', 'i', 'c', ' ', 'S', 'e', 'n', 's', 'o', 'r', ' ', 'V', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 33,DEFAULT value for cluster: Basic, attribute: model identifier, side: server */ \
+  0x0E, '2', '0', '2', '6', '.', '0', '4', '.', '0', '1', '-', '1', '.', '0', 0, 0, /* 66,DEFAULT value for cluster: Basic, attribute: sw build id, side: server */ \
 }
 #endif
 
@@ -35,7 +35,7 @@
 	#define ZCL_GENERATED_MIN_MAX_DEFAULTS { { { .ptrToDefaultValue = (uint8_t*)0x00 }, { .ptrToDefaultValue = (uint8_t*)0x00 }, { .ptrToDefaultValue = (uint8_t*)0x00 } } }
 
 
-#define ZCL_GENERATED_ATTRIBUTE_COUNT (18)
+#define ZCL_GENERATED_ATTRIBUTE_COUNT (29)
 
 // This is an array of sl_zigbee_af_attribute_metadata_t structures.
 #define ZCL_GENERATED_ATTRIBUTES { \
@@ -56,12 +56,23 @@
 		  { 0x0001, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)-1000  } }, /* 14 Cluster: Temperature Measurement, Attribute: min measured value, Side: server*/ \
 		  { 0x0002, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)12500  } }, /* 15 Cluster: Temperature Measurement, Attribute: max measured value, Side: server*/ \
 		  { 0x0003, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)50  } }, /* 16 Cluster: Temperature Measurement, Attribute: tolerance, Side: server*/ \
-		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } } /* 17 Cluster: Temperature Measurement, Attribute: cluster revision, Side: server*/ \
+		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)4  } }, /* 17 Cluster: Temperature Measurement, Attribute: cluster revision, Side: server*/ \
+		  { 0x0000, ZCL_INT32U_ATTRIBUTE_TYPE, 4, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)60000  } }, /* 18 Cluster: NowaControl Config, Attribute: measurement interval ms, Side: server*/ \
+		  { 0x0001, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0x0000  } }, /* 19 Cluster: NowaControl Config, Attribute: vorlauf offset, Side: server*/ \
+		  { 0x0002, ZCL_INT16S_ATTRIBUTE_TYPE, 2, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0x0000  } }, /* 20 Cluster: NowaControl Config, Attribute: ruecklauf offset, Side: server*/ \
+		  { 0x0003, ZCL_INT8U_ATTRIBUTE_TYPE, 1, (0x00), { (uint8_t*)0  } }, /* 21 Cluster: NowaControl Config, Attribute: sensor count, Side: server*/ \
+		  { 0x0004, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)0  } }, /* 22 Cluster: NowaControl Config, Attribute: error count, Side: server*/ \
+		  { 0x0005, ZCL_INT8U_ATTRIBUTE_TYPE, 1, (0x00), { (uint8_t*)0  } }, /* 23 Cluster: NowaControl Config, Attribute: last status, Side: server*/ \
+		  { 0x0006, ZCL_INT32U_ATTRIBUTE_TYPE, 4, (0x00), { (uint8_t*)0  } }, /* 24 Cluster: NowaControl Config, Attribute: last update age, Side: server*/ \
+		  { 0x0007, ZCL_ENUM8_ATTRIBUTE_TYPE, 1, (0x00), { (uint8_t*)1  } }, /* 25 Cluster: NowaControl Config, Attribute: antenna mode, Side: server*/ \
+		  { 0x0008, ZCL_INT32U_ATTRIBUTE_TYPE, 4, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0  } }, /* 26 Cluster: NowaControl Config, Attribute: rescan request, Side: server*/ \
+		  { 0x0009, ZCL_INT32U_ATTRIBUTE_TYPE, 4, (ATTRIBUTE_MASK_WRITABLE), { (uint8_t*)0  } }, /* 27 Cluster: NowaControl Config, Attribute: factory reset request, Side: server*/ \
+		  { 0xFFFD, ZCL_INT16U_ATTRIBUTE_TYPE, 2, (0x00), { (uint8_t*)1  } } /* 28 Cluster: NowaControl Config, Attribute: cluster revision, Side: server*/ \
 		 }
 
  
 
-#define ZCL_GENERATED_CLUSTER_COUNT (5)
+#define ZCL_GENERATED_CLUSTER_COUNT (6)
 	
 // This is an array of sl_zigbee_af_cluster_t structures.
 #define ZCL_GENERATED_CLUSTERS { \
@@ -69,12 +80,16 @@
 	  { 0x0001, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[8]), 3, 4, CLUSTER_MASK_SERVER, NULL }, /* 1, Endpoint Id: 1, Cluster: Power Configuration, Side: server*/ \
 	  { 0x0003, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[11]), 2, 4, CLUSTER_MASK_SERVER, NULL }, /* 2, Endpoint Id: 1, Cluster: Identify, Side: server*/ \
 	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[13]), 5, 10, CLUSTER_MASK_SERVER, NULL }, /* 3, Endpoint Id: 1, Cluster: Temperature Measurement, Side: server*/ \
-	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[13]), 5, 10, CLUSTER_MASK_SERVER, NULL } /* 4, Endpoint Id: 2, Cluster: Temperature Measurement, Side: server*/ \
+	  { 0xFC10, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[18]), 11, 4, CLUSTER_MASK_SERVER, NULL }, /* 4, Endpoint Id: 1, Cluster: NowaControl Config, Side: server*/ \
+	  { 0x0402, (sl_zigbee_af_attribute_metadata_t*)&(generatedAttributes[13]), 5, 10, CLUSTER_MASK_SERVER, NULL } /* 5, Endpoint Id: 2/3, Cluster: Temperature Measurement, Side: server*/ \
 	 }
 
  
-#define ZCL_GENERATED_ENDPOINT_TYPE_COUNT (0)
-#define ZCL_GENERATED_ENDPOINT_TYPES { }
+#define ZCL_GENERATED_ENDPOINT_TYPE_COUNT (2)
+#define ZCL_GENERATED_ENDPOINT_TYPES { \
+  { ((sl_zigbee_af_cluster_t*)&(generatedClusters[0])), 5, 29 }, \
+  { ((sl_zigbee_af_cluster_t*)&(generatedClusters[5])), 1, 10 }, \
+}
 
 // Largest attribute size is needed for various buffers
 #define ZCL_ATTRIBUTE_LARGEST (33)
@@ -86,31 +101,49 @@
 #define ZCL_ATTRIBUTE_MAX_SIZE (0)	
 
 // Number of fixed endpoints	
-#define ZCL_FIXED_ENDPOINT_COUNT (0)
+#define ZCL_FIXED_ENDPOINT_COUNT (3)
 
 // Array of endpoints that are supported, the data inside the array is the
 // endpoint number.
 #define ZCL_FIXED_ENDPOINT_ARRAY { \
+  1, \
+  2, \
+  3 \
 }
 
 // Array of profile ids
 #define ZCL_FIXED_PROFILE_IDS { \
+  0x0104, \
+  0x0104, \
+  0x0104 \
 }
 
 // Array of device ids
 #define ZCL_FIXED_DEVICE_IDS { \
+  770, \
+  770, \
+  770 \
 }
 
 // Array of device versions
 #define ZCL_FIXED_DEVICE_VERSIONS { \
+  1, \
+  1, \
+  1 \
 }
 
 // Array of endpoint types supported on each endpoint
 #define ZCL_FIXED_ENDPOINT_TYPES { \
+  0, \
+  1, \
+  1 \
 }
 
 // Array of networks supported on each endpoint
 #define ZCL_FIXED_NETWORKS { \
+  0x0000, \
+  0x0000, \
+  0x0000 \
 }
 
 // Array of sl_zigbee_af_command_metadata_t structs.
@@ -133,12 +166,13 @@
   { 0x00, 0x00 } \
 																		 } 
 // Array of sl_zigbee_af_plugin_reporting_entry_t structures.
-#define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS_TABLE_SIZE (4)
+#define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS_TABLE_SIZE (5)
 #define SL_ZIGBEE_ZCL_GENERATED_REPORTING_CONFIG_DEFAULTS { \
   { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0001, 0x0020, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 30, 300, 1 } }, /* Endpoint Id: 1, Cluster: Power Configuration, Attribute: battery voltage */ \
 	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0001, 0x0021, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 30, 300, 5 } }, /* Endpoint Id: 1, Cluster: Power Configuration, Attribute: battery percentage remaining */ \
 	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0001, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 1, Cluster: Temperature Measurement, Attribute: measured value */ \
 	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0002, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 2, Cluster: Temperature Measurement, Attribute: measured value */ \
+	  { SL_ZIGBEE_ZCL_REPORTING_DIRECTION_REPORTED, 0x0003, 0x0402, 0x0000, CLUSTER_MASK_SERVER, 0x0000, .data.reported={ 10, 60, 50 } }, /* Endpoint Id: 3, Cluster: Temperature Measurement, Attribute: measured value */ \
 	 } 
 
 #define SL_ZIGBEE_ZCL_MANUFACTURER_CODE 0x1049
@@ -149,12 +183,14 @@
 #define ZCL_USING_POWER_CONFIG_CLUSTER_SERVER
 #define ZCL_USING_IDENTIFY_CLUSTER_SERVER
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_SERVER
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_SERVER
 
 // Cluster Counts
 #define SL_ZIGBEE_ZCL_BASIC_CLUSTER_SERVER_ENDPOINT_COUNT (1)
 #define SL_ZIGBEE_ZCL_POWER_CONFIG_CLUSTER_SERVER_ENDPOINT_COUNT (1)
 #define SL_ZIGBEE_ZCL_IDENTIFY_CLUSTER_SERVER_ENDPOINT_COUNT (1)
-#define SL_ZIGBEE_ZCL_TEMP_MEASUREMENT_CLUSTER_SERVER_ENDPOINT_COUNT (2)
+#define SL_ZIGBEE_ZCL_TEMP_MEASUREMENT_CLUSTER_SERVER_ENDPOINT_COUNT (3)
+#define SL_ZIGBEE_ZCL_NOWA_CONTROL_CONFIG_CLUSTER_SERVER_ENDPOINT_COUNT (1)
 
 // All Enabled Cluster Attributes
 #define ZCL_USING_BASIC_CLUSTER_VERSION_ATTRIBUTE
@@ -175,6 +211,17 @@
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_TEMP_MAX_MEASURED_VALUE_ATTRIBUTE
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_TEMP_TOLERANCE_ATTRIBUTE
 #define ZCL_USING_TEMP_MEASUREMENT_CLUSTER_CLUSTER_REVISION_SERVER_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_MEAS_INTERVAL_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_VORLAUF_OFFSET_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_RUECKLAUF_OFFSET_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_SENSOR_COUNT_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_ERROR_COUNT_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_LAST_STATUS_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_LAST_UPDATE_AGE_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_ANTENNA_MODE_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_RESCAN_REQUEST_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_FACTORY_RESET_REQUEST_ATTRIBUTE
+#define ZCL_USING_NOWA_CONTROL_CONFIG_CLUSTER_CLUSTER_REVISION_SERVER_ATTRIBUTE
 
 #define SL_ZIGBEE_AF_SUPPORT_COMMAND_DISCOVERY
 
@@ -207,109 +254,70 @@
   { 0x0007, 0x0000, 32, 0x0007, 0x0000, 32 }, /* 23, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: pi cooling demand, Matter Attribute: PICoolingDemand */ \
   { 0x0008, 0x0000, 32, 0x0008, 0x0000, 32 }, /* 24, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: pi heating demand, Matter Attribute: PIHeatingDemand */ \
   { 0x0009, 0x0000, 24, 0x0009, 0x0000, 24 }, /* 25, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: HVAC system type configuration, Matter Attribute: HVACSystemTypeConfiguration */ \
-  { 0x0010, 0x0000, 40, 0x0010, 0x0000, 40 }, /* 26, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: local temperature calibration, Matter Attribute: LocalTemperatureCalibration */ \
-  { 0x0011, 0x0000, 41, 0x0011, 0x0000, 216 }, /* 27, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: occupied cooling setpoint, Matter Attribute: OccupiedCoolingSetpoint */ \
-  { 0x0012, 0x0000, 41, 0x0012, 0x0000, 216 }, /* 28, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: occupied heating setpoint, Matter Attribute: OccupiedHeatingSetpoint */ \
-  { 0x0013, 0x0000, 41, 0x0013, 0x0000, 216 }, /* 29, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: unoccupied cooling setpoint, Matter Attribute: UnoccupiedCoolingSetpoint */ \
-  { 0x0014, 0x0000, 41, 0x0014, 0x0000, 216 }, /* 30, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: unoccupied heating setpoint, Matter Attribute: UnoccupiedHeatingSetpoint */ \
-  { 0x0015, 0x0000, 41, 0x0015, 0x0000, 216 }, /* 31, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: min heat setpoint limit, Matter Attribute: MinHeatSetpointLimit */ \
-  { 0x0016, 0x0000, 41, 0x0016, 0x0000, 216 }, /* 32, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: max heat setpoint limit, Matter Attribute: MaxHeatSetpointLimit */ \
-  { 0x0017, 0x0000, 41, 0x0017, 0x0000, 216 }, /* 33, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: min cool setpoint limit, Matter Attribute: MinCoolSetpointLimit */ \
-  { 0x0018, 0x0000, 41, 0x0018, 0x0000, 216 }, /* 34, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: max cool setpoint limit, Matter Attribute: MaxCoolSetpointLimit */ \
-  { 0x0019, 0x0000, 40, 0x0019, 0x0000, 40 }, /* 35, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: min setpoint dead band, Matter Attribute: MinSetpointDeadBand */ \
-  { 0x001A, 0x0000, 24, 0x001A, 0x0000, 24 }, /* 36, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: remote sensing, Matter Attribute: RemoteSensing */ \
-  { 0x001B, 0x0000, 48, 0x001B, 0x0000, 48 }, /* 37, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: control sequence of operation, Matter Attribute: ControlSequenceOfOperation */ \
-  { 0x001C, 0x0000, 48, 0x001C, 0x0000, 48 }, /* 38, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: system mode, Matter Attribute: SystemMode */ \
-  { 0x001E, 0x0000, 48, 0x001E, 0x0000, 48 }, /* 39, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: thermostat running mode, Matter Attribute: ThermostatRunningMode */ \
-  { 0x0020, 0x0000, 48, 0x0020, 0x0000, 48 }, /* 40, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: start of week, Matter Attribute: StartOfWeek */ \
-  { 0x0021, 0x0000, 32, 0x0021, 0x0000, 32 }, /* 41, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: number of weekly transitions, Matter Attribute: NumberOfWeeklyTransitions */ \
-  { 0x0022, 0x0000, 32, 0x0022, 0x0000, 32 }, /* 42, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: number of daily transitions, Matter Attribute: NumberOfDailyTransitions */ \
-  { 0x0023, 0x0000, 48, 0x0023, 0x0000, 48 }, /* 43, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: temperature setpoint hold, Matter Attribute: TemperatureSetpointHold */ \
-  { 0x0024, 0x0000, 33, 0x0024, 0x0000, 33 }, /* 44, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: temperature setpoint hold duration, Matter Attribute: TemperatureSetpointHoldDuration */ \
-  { 0x0025, 0x0000, 24, 0x0025, 0x0000, 24 }, /* 45, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: thermostat programming operation mode, Matter Attribute: ThermostatProgrammingOperationMode */ \
-  { 0x0029, 0x0000, 25, 0x0029, 0x0000, 25 }, /* 46, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: hvac relay state, Matter Attribute: ThermostatRunningState */ \
-  { 0x0030, 0x0000, 48, 0x0030, 0x0000, 48 }, /* 47, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: setpoint change source, Matter Attribute: SetpointChangeSource */ \
-  { 0x0031, 0x0000, 41, 0x0031, 0x0000, 41 }, /* 48, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: setpoint change amount, Matter Attribute: SetpointChangeAmount */ \
-  { 0x0032, 0x0000, 226, 0x0032, 0x0000, 228 }, /* 49, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: setpoint change source timestamp, Matter Attribute: SetpointChangeSourceTimestamp */ \
-  { 0x0034, 0x0000, 32, 0x0034, 0x0000, 32 }, /* 50, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: occupied setback, Matter Attribute: OccupiedSetback */ \
-  { 0x0035, 0x0000, 32, 0x0035, 0x0000, 32 }, /* 51, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: occupied setback min, Matter Attribute: OccupiedSetbackMin */ \
-  { 0x0036, 0x0000, 32, 0x0036, 0x0000, 32 }, /* 52, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: occupied setback max, Matter Attribute: OccupiedSetbackMax */ \
-  { 0x0037, 0x0000, 32, 0x0037, 0x0000, 32 }, /* 53, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: unoccupied setback, Matter Attribute: UnoccupiedSetback */ \
-  { 0x0038, 0x0000, 32, 0x0038, 0x0000, 32 }, /* 54, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: unoccupied setback min, Matter Attribute: UnoccupiedSetbackMin */ \
-  { 0x0039, 0x0000, 32, 0x0039, 0x0000, 32 }, /* 55, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: unoccupied setback max, Matter Attribute: UnoccupiedSetbackMax */ \
-  { 0x003A, 0x0000, 32, 0x003A, 0x0000, 32 }, /* 56, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: emergency heat delta, Matter Attribute: EmergencyHeatDelta */ \
-  { 0x0040, 0x0000, 48, 0x0040, 0x0000, 48 }, /* 57, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac type, Matter Attribute: ACType */ \
-  { 0x0041, 0x0000, 33, 0x0041, 0x0000, 33 }, /* 58, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac capacity, Matter Attribute: ACCapacity */ \
-  { 0x0042, 0x0000, 48, 0x0042, 0x0000, 48 }, /* 59, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac refrigerant type, Matter Attribute: ACRefrigerantType */ \
-  { 0x0043, 0x0000, 48, 0x0043, 0x0000, 48 }, /* 60, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac compressor, Matter Attribute: ACCompressorType */ \
-  { 0x0044, 0x0000, 27, 0x0044, 0x0000, 27 }, /* 61, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac error code, Matter Attribute: ACErrorCode */ \
-  { 0x0045, 0x0000, 48, 0x0045, 0x0000, 48 }, /* 62, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac louver position, Matter Attribute: ACLouverPosition */ \
-  { 0x0046, 0x0000, 41, 0x0046, 0x0000, 216 }, /* 63, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac coil temperature, Matter Attribute: ACCoilTemperature */ \
-  { 0x0047, 0x0000, 48, 0x0047, 0x0000, 48 }, /* 64, Zigbee Cluster: Thermostat, Matter Cluster: Thermostat, Zigbee Attribute: ac capacity format, Matter Attribute: ACCapacityformat */ \
-  { 0x0000, 0x0000, 48, 0x0000, 0x0000, 48 }, /* 65, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: temperature display mode, Matter Attribute: TemperatureDisplayMode */ \
-  { 0x0001, 0x0000, 48, 0x0001, 0x0000, 48 }, /* 66, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: keypad lockout, Matter Attribute: KeypadLockout */ \
-  { 0x0002, 0x0000, 48, 0x0002, 0x0000, 48 }, /* 67, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: schedule programming visibility, Matter Attribute: ScheduleProgrammingVisibility */ \
-  { 0x0000, 0x0000, 32, 0x0000, 0x0000, 32 }, /* 68, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current hue, Matter Attribute: CurrentHue */ \
-  { 0x0001, 0x0000, 32, 0x0001, 0x0000, 32 }, /* 69, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current saturation, Matter Attribute: CurrentSaturation */ \
-  { 0x0002, 0x0000, 33, 0x0002, 0x0000, 33 }, /* 70, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: remaining time, Matter Attribute: RemainingTime */ \
-  { 0x0003, 0x0000, 33, 0x0003, 0x0000, 33 }, /* 71, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current x, Matter Attribute: CurrentX */ \
-  { 0x0004, 0x0000, 33, 0x0004, 0x0000, 33 }, /* 72, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current y, Matter Attribute: CurrentY */ \
-  { 0x0005, 0x0000, 48, 0x0005, 0x0000, 48 }, /* 73, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: drift compensation, Matter Attribute: DriftCompensation */ \
-  { 0x0006, 0x0000, 66, 0x0006, 0x0000, 66 }, /* 74, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: compensation text, Matter Attribute: CompensationText */ \
-  { 0x0007, 0x0000, 33, 0x0007, 0x0000, 33 }, /* 75, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temperature, Matter Attribute: ColorTemperatureMireds */ \
-  { 0x0008, 0x0000, 48, 0x0008, 0x0000, 48 }, /* 76, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color mode, Matter Attribute: ColorMode */ \
-  { 0x000F, 0x0000, 24, 0x000F, 0x0000, 24 }, /* 77, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color control options, Matter Attribute: Options */ \
-  { 0x0010, 0x0000, 32, 0x0010, 0x0000, 32 }, /* 78, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: number of primaries, Matter Attribute: NumberOfPrimaries */ \
-  { 0x0011, 0x0000, 33, 0x0011, 0x0000, 33 }, /* 79, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 x, Matter Attribute: Primary1X */ \
-  { 0x0012, 0x0000, 33, 0x0012, 0x0000, 33 }, /* 80, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 y, Matter Attribute: Primary1Y */ \
-  { 0x0013, 0x0000, 32, 0x0013, 0x0000, 32 }, /* 81, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 intensity, Matter Attribute: Primary1Intensity */ \
-  { 0x0015, 0x0000, 33, 0x0015, 0x0000, 33 }, /* 82, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 x, Matter Attribute: Primary2X */ \
-  { 0x0016, 0x0000, 33, 0x0016, 0x0000, 33 }, /* 83, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 y, Matter Attribute: Primary2Y */ \
-  { 0x0017, 0x0000, 32, 0x0017, 0x0000, 32 }, /* 84, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 intensity, Matter Attribute: Primary2Intensity */ \
-  { 0x0019, 0x0000, 33, 0x0019, 0x0000, 33 }, /* 85, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 x, Matter Attribute: Primary3X */ \
-  { 0x001A, 0x0000, 33, 0x001A, 0x0000, 33 }, /* 86, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 y, Matter Attribute: Primary3Y */ \
-  { 0x001B, 0x0000, 32, 0x001B, 0x0000, 32 }, /* 87, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 intensity, Matter Attribute: Primary3Intensity */ \
-  { 0x0020, 0x0000, 33, 0x0020, 0x0000, 33 }, /* 88, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 x, Matter Attribute: Primary4X */ \
-  { 0x0021, 0x0000, 33, 0x0021, 0x0000, 33 }, /* 89, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 y, Matter Attribute: Primary4Y */ \
-  { 0x0022, 0x0000, 32, 0x0022, 0x0000, 32 }, /* 90, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 intensity, Matter Attribute: Primary4Intensity */ \
-  { 0x0024, 0x0000, 33, 0x0024, 0x0000, 33 }, /* 91, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 x, Matter Attribute: Primary5X */ \
-  { 0x0025, 0x0000, 33, 0x0025, 0x0000, 33 }, /* 92, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 y, Matter Attribute: Primary5Y */ \
-  { 0x0026, 0x0000, 32, 0x0026, 0x0000, 32 }, /* 93, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 intensity, Matter Attribute: Primary5Intensity */ \
-  { 0x0028, 0x0000, 33, 0x0028, 0x0000, 33 }, /* 94, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 x, Matter Attribute: Primary6X */ \
-  { 0x0029, 0x0000, 33, 0x0029, 0x0000, 33 }, /* 95, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 y, Matter Attribute: Primary6Y */ \
-  { 0x002A, 0x0000, 32, 0x002A, 0x0000, 32 }, /* 96, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 intensity, Matter Attribute: Primary6Intensity */ \
-  { 0x0030, 0x0000, 33, 0x0030, 0x0000, 33 }, /* 97, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: white point x, Matter Attribute: WhitePointX */ \
-  { 0x0031, 0x0000, 33, 0x0031, 0x0000, 33 }, /* 98, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: white point y, Matter Attribute: WhitePointY */ \
-  { 0x0032, 0x0000, 33, 0x0032, 0x0000, 33 }, /* 99, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r x, Matter Attribute: ColorPointRX */ \
-  { 0x0033, 0x0000, 33, 0x0033, 0x0000, 33 }, /* 100, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r y, Matter Attribute: ColorPointRY */ \
-  { 0x0034, 0x0000, 32, 0x0034, 0x0000, 32 }, /* 101, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r intensity, Matter Attribute: ColorPointRIntensity */ \
-  { 0x0036, 0x0000, 33, 0x0036, 0x0000, 33 }, /* 102, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g x, Matter Attribute: ColorPointGX */ \
-  { 0x0037, 0x0000, 33, 0x0037, 0x0000, 33 }, /* 103, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g y, Matter Attribute: ColorPointGY */ \
-  { 0x0038, 0x0000, 32, 0x0038, 0x0000, 32 }, /* 104, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g intensity, Matter Attribute: ColorPointGIntensity */ \
-  { 0x003A, 0x0000, 33, 0x003A, 0x0000, 33 }, /* 105, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b x, Matter Attribute: ColorPointBX */ \
-  { 0x003B, 0x0000, 33, 0x003B, 0x0000, 33 }, /* 106, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b y, Matter Attribute: ColorPointBY */ \
-  { 0x003C, 0x0000, 32, 0x003C, 0x0000, 32 }, /* 107, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b intensity, Matter Attribute: ColorPointBIntensity */ \
-  { 0x4000, 0x0000, 33, 0x4000, 0x0000, 33 }, /* 108, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: enhanced current hue, Matter Attribute: EnhancedCurrentHue */ \
-  { 0x4001, 0x0000, 48, 0x4001, 0x0000, 48 }, /* 109, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: enhanced color mode, Matter Attribute: EnhancedColorMode */ \
-  { 0x4002, 0x0000, 32, 0x4002, 0x0000, 32 }, /* 110, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop active, Matter Attribute: ColorLoopActive */ \
-  { 0x4003, 0x0000, 32, 0x4003, 0x0000, 32 }, /* 111, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop direction, Matter Attribute: ColorLoopDirection */ \
-  { 0x4004, 0x0000, 33, 0x4004, 0x0000, 33 }, /* 112, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop time, Matter Attribute: ColorLoopTime */ \
-  { 0x4005, 0x0000, 33, 0x4005, 0x0000, 33 }, /* 113, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop start enhanced hue, Matter Attribute: ColorLoopStartEnhancedHue */ \
-  { 0x4006, 0x0000, 33, 0x4006, 0x0000, 33 }, /* 114, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop stored enhanced hue, Matter Attribute: ColorLoopStoredEnhancedHue */ \
-  { 0x400A, 0x0000, 25, 0x400A, 0x0000, 25 }, /* 115, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color capabilities, Matter Attribute: ColorCapabilities */ \
-  { 0x400B, 0x0000, 33, 0x400B, 0x0000, 33 }, /* 116, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temp physical min, Matter Attribute: ColorTempPhysicalMinMireds */ \
-  { 0x400C, 0x0000, 33, 0x400C, 0x0000, 33 }, /* 117, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temp physical max, Matter Attribute: ColorTempPhysicalMaxMireds */ \
-  { 0x400D, 0x0000, 33, 0x400D, 0x0000, 33 }, /* 118, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: couple color temp to level min-mireds, Matter Attribute: CoupleColorTempToLevelMinMireds */ \
-  { 0x4010, 0x0000, 33, 0x4010, 0x0000, 33 } /* 119, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: start up color temperature mireds, Matter Attribute: StartUpColorTemperatureMireds */ \
+  { 0x0000, 0x0000, 48, 0x0000, 0x0000, 48 }, /* 26, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: temperature display mode, Matter Attribute: TemperatureDisplayMode */ \
+  { 0x0001, 0x0000, 48, 0x0001, 0x0000, 48 }, /* 27, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: keypad lockout, Matter Attribute: KeypadLockout */ \
+  { 0x0002, 0x0000, 48, 0x0002, 0x0000, 48 }, /* 28, Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration, Zigbee Attribute: schedule programming visibility, Matter Attribute: ScheduleProgrammingVisibility */ \
+  { 0x0000, 0x0000, 32, 0x0000, 0x0000, 32 }, /* 29, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current hue, Matter Attribute: CurrentHue */ \
+  { 0x0001, 0x0000, 32, 0x0001, 0x0000, 32 }, /* 30, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current saturation, Matter Attribute: CurrentSaturation */ \
+  { 0x0002, 0x0000, 33, 0x0002, 0x0000, 33 }, /* 31, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: remaining time, Matter Attribute: RemainingTime */ \
+  { 0x0003, 0x0000, 33, 0x0003, 0x0000, 33 }, /* 32, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current x, Matter Attribute: CurrentX */ \
+  { 0x0004, 0x0000, 33, 0x0004, 0x0000, 33 }, /* 33, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: current y, Matter Attribute: CurrentY */ \
+  { 0x0005, 0x0000, 48, 0x0005, 0x0000, 48 }, /* 34, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: drift compensation, Matter Attribute: DriftCompensation */ \
+  { 0x0006, 0x0000, 66, 0x0006, 0x0000, 66 }, /* 35, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: compensation text, Matter Attribute: CompensationText */ \
+  { 0x0007, 0x0000, 33, 0x0007, 0x0000, 33 }, /* 36, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temperature, Matter Attribute: ColorTemperatureMireds */ \
+  { 0x0008, 0x0000, 48, 0x0008, 0x0000, 48 }, /* 37, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color mode, Matter Attribute: ColorMode */ \
+  { 0x000F, 0x0000, 24, 0x000F, 0x0000, 24 }, /* 38, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color control options, Matter Attribute: Options */ \
+  { 0x0010, 0x0000, 32, 0x0010, 0x0000, 32 }, /* 39, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: number of primaries, Matter Attribute: NumberOfPrimaries */ \
+  { 0x0011, 0x0000, 33, 0x0011, 0x0000, 33 }, /* 40, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 x, Matter Attribute: Primary1X */ \
+  { 0x0012, 0x0000, 33, 0x0012, 0x0000, 33 }, /* 41, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 y, Matter Attribute: Primary1Y */ \
+  { 0x0013, 0x0000, 32, 0x0013, 0x0000, 32 }, /* 42, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 1 intensity, Matter Attribute: Primary1Intensity */ \
+  { 0x0015, 0x0000, 33, 0x0015, 0x0000, 33 }, /* 43, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 x, Matter Attribute: Primary2X */ \
+  { 0x0016, 0x0000, 33, 0x0016, 0x0000, 33 }, /* 44, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 y, Matter Attribute: Primary2Y */ \
+  { 0x0017, 0x0000, 32, 0x0017, 0x0000, 32 }, /* 45, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 2 intensity, Matter Attribute: Primary2Intensity */ \
+  { 0x0019, 0x0000, 33, 0x0019, 0x0000, 33 }, /* 46, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 x, Matter Attribute: Primary3X */ \
+  { 0x001A, 0x0000, 33, 0x001A, 0x0000, 33 }, /* 47, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 y, Matter Attribute: Primary3Y */ \
+  { 0x001B, 0x0000, 32, 0x001B, 0x0000, 32 }, /* 48, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 3 intensity, Matter Attribute: Primary3Intensity */ \
+  { 0x0020, 0x0000, 33, 0x0020, 0x0000, 33 }, /* 49, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 x, Matter Attribute: Primary4X */ \
+  { 0x0021, 0x0000, 33, 0x0021, 0x0000, 33 }, /* 50, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 y, Matter Attribute: Primary4Y */ \
+  { 0x0022, 0x0000, 32, 0x0022, 0x0000, 32 }, /* 51, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 4 intensity, Matter Attribute: Primary4Intensity */ \
+  { 0x0024, 0x0000, 33, 0x0024, 0x0000, 33 }, /* 52, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 x, Matter Attribute: Primary5X */ \
+  { 0x0025, 0x0000, 33, 0x0025, 0x0000, 33 }, /* 53, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 y, Matter Attribute: Primary5Y */ \
+  { 0x0026, 0x0000, 32, 0x0026, 0x0000, 32 }, /* 54, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 5 intensity, Matter Attribute: Primary5Intensity */ \
+  { 0x0028, 0x0000, 33, 0x0028, 0x0000, 33 }, /* 55, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 x, Matter Attribute: Primary6X */ \
+  { 0x0029, 0x0000, 33, 0x0029, 0x0000, 33 }, /* 56, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 y, Matter Attribute: Primary6Y */ \
+  { 0x002A, 0x0000, 32, 0x002A, 0x0000, 32 }, /* 57, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: primary 6 intensity, Matter Attribute: Primary6Intensity */ \
+  { 0x0030, 0x0000, 33, 0x0030, 0x0000, 33 }, /* 58, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: white point x, Matter Attribute: WhitePointX */ \
+  { 0x0031, 0x0000, 33, 0x0031, 0x0000, 33 }, /* 59, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: white point y, Matter Attribute: WhitePointY */ \
+  { 0x0032, 0x0000, 33, 0x0032, 0x0000, 33 }, /* 60, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r x, Matter Attribute: ColorPointRX */ \
+  { 0x0033, 0x0000, 33, 0x0033, 0x0000, 33 }, /* 61, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r y, Matter Attribute: ColorPointRY */ \
+  { 0x0034, 0x0000, 32, 0x0034, 0x0000, 32 }, /* 62, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point r intensity, Matter Attribute: ColorPointRIntensity */ \
+  { 0x0036, 0x0000, 33, 0x0036, 0x0000, 33 }, /* 63, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g x, Matter Attribute: ColorPointGX */ \
+  { 0x0037, 0x0000, 33, 0x0037, 0x0000, 33 }, /* 64, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g y, Matter Attribute: ColorPointGY */ \
+  { 0x0038, 0x0000, 32, 0x0038, 0x0000, 32 }, /* 65, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point g intensity, Matter Attribute: ColorPointGIntensity */ \
+  { 0x003A, 0x0000, 33, 0x003A, 0x0000, 33 }, /* 66, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b x, Matter Attribute: ColorPointBX */ \
+  { 0x003B, 0x0000, 33, 0x003B, 0x0000, 33 }, /* 67, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b y, Matter Attribute: ColorPointBY */ \
+  { 0x003C, 0x0000, 32, 0x003C, 0x0000, 32 }, /* 68, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color point b intensity, Matter Attribute: ColorPointBIntensity */ \
+  { 0x4000, 0x0000, 33, 0x4000, 0x0000, 33 }, /* 69, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: enhanced current hue, Matter Attribute: EnhancedCurrentHue */ \
+  { 0x4001, 0x0000, 48, 0x4001, 0x0000, 48 }, /* 70, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: enhanced color mode, Matter Attribute: EnhancedColorMode */ \
+  { 0x4002, 0x0000, 32, 0x4002, 0x0000, 32 }, /* 71, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop active, Matter Attribute: ColorLoopActive */ \
+  { 0x4003, 0x0000, 32, 0x4003, 0x0000, 32 }, /* 72, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop direction, Matter Attribute: ColorLoopDirection */ \
+  { 0x4004, 0x0000, 33, 0x4004, 0x0000, 33 }, /* 73, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop time, Matter Attribute: ColorLoopTime */ \
+  { 0x4005, 0x0000, 33, 0x4005, 0x0000, 33 }, /* 74, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop start enhanced hue, Matter Attribute: ColorLoopStartEnhancedHue */ \
+  { 0x4006, 0x0000, 33, 0x4006, 0x0000, 33 }, /* 75, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color loop stored enhanced hue, Matter Attribute: ColorLoopStoredEnhancedHue */ \
+  { 0x400A, 0x0000, 25, 0x400A, 0x0000, 25 }, /* 76, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color capabilities, Matter Attribute: ColorCapabilities */ \
+  { 0x400B, 0x0000, 33, 0x400B, 0x0000, 33 }, /* 77, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temp physical min, Matter Attribute: ColorTempPhysicalMinMireds */ \
+  { 0x400C, 0x0000, 33, 0x400C, 0x0000, 33 }, /* 78, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: color temp physical max, Matter Attribute: ColorTempPhysicalMaxMireds */ \
+  { 0x400D, 0x0000, 33, 0x400D, 0x0000, 33 }, /* 79, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: couple color temp to level min-mireds, Matter Attribute: CoupleColorTempToLevelMinMireds */ \
+  { 0x4010, 0x0000, 33, 0x4010, 0x0000, 33 } /* 80, Zigbee Cluster: Color Control, Matter Cluster: Color Control, Zigbee Attribute: start up color temperature mireds, Matter Attribute: StartUpColorTemperatureMireds */ \
 }
 
 #define GENERATED_MULTI_PROTOCOL_CLUSTER_MAPPING \
 { \
 { 0x0006, 0x0000, 0x0006, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[0], 2 }, /* Zigbee Cluster: On/off, Matter Cluster: On/Off */ \
 { 0x0008, 0x0000, 0x0008, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[2], 14 }, /* Zigbee Cluster: Level Control, Matter Cluster: Level Control */ \
-{ 0x0201, 0x0000, 0x0201, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[16], 49 }, /* Zigbee Cluster: Thermostat, Matter Cluster: Thermostat */ \
-{ 0x0204, 0x0000, 0x0204, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[65], 3 }, /* Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration */ \
-{ 0x0300, 0x0000, 0x0300, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[68], 52 } /* Zigbee Cluster: Color Control, Matter Cluster: Color Control */ \
+{ 0x0201, 0x0000, 0x0201, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[16], 10 }, /* Zigbee Cluster: Thermostat, Matter Cluster: Thermostat */ \
+{ 0x0204, 0x0000, 0x0204, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[26], 3 }, /* Zigbee Cluster: Thermostat User Interface Configuration, Matter Cluster: Thermostat User Interface Configuration */ \
+{ 0x0300, 0x0000, 0x0300, 0x0000, (sl_zigbee_matter_af_multi_protocol_attribute_metadata_t*)&multiProtocolAttributeMap[29], 52 } /* Zigbee Cluster: Color Control, Matter Cluster: Color Control */ \
 }
 
 #endif // SILABS_AF_ENDPOINT_CONFIG

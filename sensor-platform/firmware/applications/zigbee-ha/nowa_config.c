@@ -16,6 +16,21 @@
 
 static nowa_config_t s_config;
 
+#define NOWA_SENSOR_ROM_MAGIC     (0xA5u)
+#define NOWA_SENSOR_ROM_INDEX_BASE (1u)
+#define NOWA_SENSOR_ROM_SLOT_SIZE  (8u)
+#define NOWA_SENSOR_ROM_SLOT_COUNT (2u)
+
+static bool sensor_rom_index_valid(uint8_t index)
+{
+  return (index < NOWA_SENSOR_ROM_SLOT_COUNT);
+}
+
+static uint8_t *sensor_rom_slot_ptr(uint8_t index)
+{
+  return &s_config.reserved2[NOWA_SENSOR_ROM_INDEX_BASE + (index * NOWA_SENSOR_ROM_SLOT_SIZE)];
+}
+
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
@@ -29,6 +44,8 @@ static void set_defaults(void)
   s_config.pending_apply           = 0u;
   s_config.measurement_interval_ms = NOWA_DEFAULT_MEAS_INTERVAL_MS;
   s_config.poll_interval_ms        = NOWA_DEFAULT_POLL_INTERVAL_MS;
+  s_config.vorlauf_offset_cc       = 0;
+  s_config.ruecklauf_offset_cc     = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +89,44 @@ const nowa_config_t *nowa_config_get(void)
   return &s_config;
 }
 
+bool nowa_config_get_sensor_rom(uint8_t index, onewire_rom_t *rom_out)
+{
+  if (!sensor_rom_index_valid(index) || rom_out == NULL) {
+    return false;
+  }
+
+  if (s_config.reserved2[0] != NOWA_SENSOR_ROM_MAGIC) {
+    return false;
+  }
+
+  memcpy(rom_out->bytes, sensor_rom_slot_ptr(index), sizeof(rom_out->bytes));
+
+  for (uint8_t i = 0; i < sizeof(rom_out->bytes); i++) {
+    if (rom_out->bytes[i] != 0u) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+sl_status_t nowa_config_set_sensor_rom(uint8_t index, const onewire_rom_t *rom)
+{
+  if (!sensor_rom_index_valid(index) || rom == NULL) {
+    return SL_STATUS_INVALID_PARAMETER;
+  }
+
+  s_config.reserved2[0] = NOWA_SENSOR_ROM_MAGIC;
+  memcpy(sensor_rom_slot_ptr(index), rom->bytes, sizeof(rom->bytes));
+  return nowa_config_save();
+}
+
+void nowa_config_clear_sensor_roms(void)
+{
+  memset(s_config.reserved2, 0, sizeof(s_config.reserved2));
+  (void)nowa_config_save();
+}
+
 sl_status_t nowa_config_set_meas_interval(uint32_t interval_ms)
 {
   /* Clamp to valid range */
@@ -85,6 +140,33 @@ sl_status_t nowa_config_set_meas_interval(uint32_t interval_ms)
   sl_zigbee_app_debug_println(
     "NowaConfig: meas_interval set to %lu ms", (unsigned long)interval_ms);
   return nowa_config_save();
+}
+
+sl_status_t nowa_config_set_sensor_offset_cc(uint8_t index, int16_t offset_cc)
+{
+  if (index == 0u) {
+    s_config.vorlauf_offset_cc = offset_cc;
+  } else if (index == 1u) {
+    s_config.ruecklauf_offset_cc = offset_cc;
+  } else {
+    return SL_STATUS_INVALID_PARAMETER;
+  }
+
+  sl_zigbee_app_debug_println("NowaConfig: offset[%d] set to %d cc",
+                              (int)index,
+                              (int)offset_cc);
+  return nowa_config_save();
+}
+
+int16_t nowa_config_get_sensor_offset_cc(uint8_t index)
+{
+  if (index == 0u) {
+    return s_config.vorlauf_offset_cc;
+  }
+  if (index == 1u) {
+    return s_config.ruecklauf_offset_cc;
+  }
+  return 0;
 }
 
 sl_status_t nowa_config_set_power_source(nowa_power_source_t src)

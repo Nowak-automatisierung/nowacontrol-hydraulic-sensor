@@ -1,0 +1,100 @@
+name: Release Firmware and OTA Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Firmware version (for example 1.0.0)"
+        required: true
+      ota_channel:
+        description: "OTA channel name"
+        required: true
+        default: "stable"
+      prerelease:
+        description: "Create prerelease"
+        required: false
+        default: "false"
+  push:
+    tags:
+      - "fw-v*"
+
+jobs:
+  firmware:
+    runs-on:
+      - self-hosted
+      - windows
+      - silabs
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: powershell
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      BUILD_DIR: ${{ github.workspace }}\sensor-platform\firmware\applications\zigbee-ha\cmake_gcc
+      OUTPUT_DIR: ${{ github.workspace }}\dist\firmware
+      BOOTLOADER_HEX: ${{ github.workspace }}\sensor-platform\firmware\bootloader\nowacontrol_bootloader_nwc_hyd_001.hex
+      APP_HEX: ${{ github.workspace }}\sensor-platform\firmware\applications\zigbee-ha\cmake_gcc\build\base\nowacontrol-zigbee-ha.hex
+      APP_BIN: ${{ github.workspace }}\sensor-platform\firmware\applications\zigbee-ha\cmake_gcc\build\base\nowacontrol-zigbee-ha.bin
+      APP_MAP: ${{ github.workspace }}\sensor-platform\firmware\applications\zigbee-ha\cmake_gcc\build\base\nowacontrol-zigbee-ha.map
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve release version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.version }}"
+            $channel = "${{ github.event.inputs.ota_channel }}"
+            $tag = "fw-v$version"
+          } else {
+            $tag = "${env:GITHUB_REF_NAME}"
+            $version = $tag.Substring(5)
+            $channel = "stable"
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "channel=$channel" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build firmware
+        working-directory: ${{ env.BUILD_DIR }}
+        run: cmake --build build --config base --target nowacontrol-zigbee-ha
+
+      - name: Stage release files
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:OUTPUT_DIR | Out-Null
+          Copy-Item $env:BOOTLOADER_HEX $env:OUTPUT_DIR
+          Copy-Item $env:APP_HEX $env:OUTPUT_DIR
+          Copy-Item $env:APP_BIN $env:OUTPUT_DIR
+          Copy-Item $env:APP_MAP $env:OUTPUT_DIR
+
+      - name: Generate OTA manifest
+        run: |
+          python sensor-platform/tools/release/generate_ota_manifest.py `
+            --version "${{ steps.version.outputs.version }}" `
+            --channel "${{ steps.version.outputs.channel }}" `
+            --app-hex "${{ env.APP_HEX }}" `
+            --app-bin "${{ env.APP_BIN }}" `
+            --bootloader "${{ env.BOOTLOADER_HEX }}" `
+            --output "${{ env.OUTPUT_DIR }}\\ota-manifest-${{ steps.version.outputs.version }}.json"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ steps.version.outputs.version }}
+          path: dist/firmware/*
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Firmware ${{ steps.version.outputs.version }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          files: |
+            dist/firmware/*

@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sl_status.h"
+#include "onewire.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,8 +37,8 @@ extern "C" {
 
 // Magic + version: changing NOWA_CONFIG_VERSION forces a factory reset
 // on the next boot so that old incompatible structs are overwritten.
-#define NOWA_CONFIG_MAGIC           (0xC0F10002u)  /**< Schema version 2      */
-#define NOWA_CONFIG_VERSION         (2u)
+#define NOWA_CONFIG_MAGIC           (0xC0F10003u)  /**< Schema version 3      */
+#define NOWA_CONFIG_VERSION         (3u)
 
 // ---------------------------------------------------------------------------
 // Limits for runtime-tunable parameters
@@ -60,7 +61,7 @@ typedef enum {
 } nowa_power_source_t;
 
 // ---------------------------------------------------------------------------
-// Persistent configuration block (48 bytes, version 2)
+// Persistent configuration block (48 bytes, version 3)
 // ---------------------------------------------------------------------------
 typedef struct {
   /* --- Header (8 bytes) --------------------------------------------------- */
@@ -70,13 +71,15 @@ typedef struct {
   uint8_t  pending_apply;           /**< Non-zero: reboot needed for changes   */
   uint8_t  reserved;                /**< Padding                               */
 
-  /* --- Runtime parameters (8 bytes) --------------------------------------- */
+  /* --- Runtime parameters (12 bytes) -------------------------------------- */
   uint32_t measurement_interval_ms; /**< Temperature sampling period [ms]      */
   uint32_t poll_interval_ms;        /**< Zigbee end-device poll rate [ms]      */
                                     /**< 0 = router mode (no polling)          */
+  int16_t  vorlauf_offset_cc;       /**< Supply offset in 0.01 C               */
+  int16_t  ruecklauf_offset_cc;     /**< Return offset in 0.01 C               */
 
-  /* --- Future expansion (32 bytes) --------------------------------------- */
-  uint8_t  reserved2[32];           /**< Reserved, zero on creation            */
+  /* --- Future expansion (28 bytes) --------------------------------------- */
+  uint8_t  reserved2[28];           /**< Reserved, zero on creation            */
 } nowa_config_t;
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,10 @@ sl_status_t nowa_config_init(void);
  */
 const nowa_config_t *nowa_config_get(void);
 
+bool nowa_config_get_sensor_rom(uint8_t index, onewire_rom_t *rom_out);
+sl_status_t nowa_config_set_sensor_rom(uint8_t index, const onewire_rom_t *rom);
+void nowa_config_clear_sensor_roms(void);
+
 /**
  * @brief Set the measurement interval and persist to NVM3 immediately.
  *
@@ -105,6 +112,8 @@ const nowa_config_t *nowa_config_get(void);
  * @return SL_STATUS_OK on success.
  */
 sl_status_t nowa_config_set_meas_interval(uint32_t interval_ms);
+sl_status_t nowa_config_set_sensor_offset_cc(uint8_t index, int16_t offset_cc);
+int16_t nowa_config_get_sensor_offset_cc(uint8_t index);
 
 /**
  * @brief Set the power source type and persist to NVM3.

@@ -43,10 +43,24 @@ V1 ist auf folgende Kernlinie ausgerichtet:
 - OTA: vorbereitet, aber noch nicht release-ready
 - BLE / Thread / Matter: Zukunftspfad, nicht Bestandteil von V1 ohne neue Bewertung
 
+## Codex-Migration
+
+Die bevorzugte Projekt-Einstiegsdatei fuer die laufende Migration ist `CODEX.md`.
+
+Neu angelegt fuer den professionellen Finalpfad:
+- `custom_components/nowacontrol_hydraulic_sensor/` als HACS-/Home-Assistant-Zielpaket
+- `hacs.json` am Repo-Root fuer HACS-Kompatibilitaet
+- `docs/architecture/codex-migration-target.md` als Migrations-Source-of-Truth
+- `docs/runbooks/github-public-hacs-cutover.md` als Schritt-fuer-Schritt-Pfad fuer GitHub/HACS-Rollout
+
+`CLAUDE.md` und `.claude/` gelten als Legacy-Bestand und werden erst nach dokumentierter Uebernahme bereinigt.
+
 ## Repository-Struktur
 
 ```text
-.claude/               Claude-Projektkontext, Agenten, Skills
+CODEX.md               Codex-Einstieg und Arbeitsregeln
+custom_components/      HACS-/Home-Assistant-Zielpaket
+.claude/               Legacy Claude-Projektkontext, Agenten, Skills
 .github/workflows/     GitHub-Automatisierung
 admin-portal/          Verwaltungs- und Produktoberflaechen
 device-cloud/          Cloud-Services, u. a. Update-Service
@@ -55,3 +69,4 @@ infra/                 Infrastruktur und Betriebsartefakte
 marketing-site/        Marketing-/Web-Praesenz
 sensor-platform/       Geraete-, Firmware-, Hardware- und Testbasis
 tools/scaffold/        Projekt- und Worktree-Scaffolding
+
