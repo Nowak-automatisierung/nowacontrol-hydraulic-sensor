@@ -1,4 +1,5 @@
 #CRC Codes for initially generated config files -- do not modify!
+SEGGER_RTT_Conf.h=946725479
 app_properties_config.h=1568654695
 btl_interface_cfg.h=-977446257
 btl_interface_cfg_s2c4.h=1987555760

@@ -27,6 +27,7 @@
 
 
 #define SL_ZIGBEE_AF_GENERATED_UC_EVENTS_INIT \
+extern void sl_zigbee_af_identify_cluster_server_tick_cb(uint8_t endpoint); \
 
 // sl_zigbee_event_context_t structs used to populate the sli_zigbee_app_event_context table
 #define SL_ZIGBEE_AF_GENERATED_UC_EVENT_CONTEXT \

@@ -36,9 +36,11 @@ secrets/
 
 # Claude local settings
 .claude/settings.local.json
+.claude/worktrees/
 
 # Simplicity Studio / Silicon Labs
 .projectlinkstore
+.uceditor/
 AGENTS.md
 AGENTS-SLAB.md
 *.out
@@ -46,3 +48,11 @@ AGENTS-SLAB.md
 *.bin
 *.hex
 *.s37
+sensor-platform/firmware/applications/zigbee-ha/config/zcl/*.zap~
+sensor-platform/firmware/applications/zigbee-ha/config/zcl/*.before_workspace_fix.zap
+sensor-platform/firmware/applications/zigbee-ha/autogen/linkerfile.icf
+sensor-platform/firmware/applications/zigbee-ha/cmake_gcc/readme.md
+sensor-platform/firmware/applications/zigbee-ha/cmake_iar/
+sensor-platform/firmware/applications/zigbee-ha/cmake_llvm/
+sensor-platform/firmware/applications/zigbee-ha/config/nowa_uart_console.h
+sensor-platform/firmware/applications/zigbee-ha/nowa_uart_console.c

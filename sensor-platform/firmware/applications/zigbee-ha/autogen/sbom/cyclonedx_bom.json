@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-03-28T19:32:00Z",
+    "timestamp" : "2026-04-01T09:48:02Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -828,18 +828,6 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:hfxo_manager",
-      "name" : "HFXO Manager",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:common_token_manager",
       "name" : "Common Token Manager",
       "version" : "2025.12.2",
@@ -1370,18 +1358,6 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_i2c",
       "name" : "Device Manager I2C",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:power_manager_deepsleep",
-      "name" : "Power Manager: Deepsleep",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -2020,6 +1996,42 @@
       },
       "licenses" : [ {
         "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:power_manager_no_deepsleep",
+      "name" : "Power Manager: No Deepsleep",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:iostream_rtt",
+      "name" : "IO Stream: RTT",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:segger_rtt",
+      "name" : "SEGGER RTT",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Segger"
       } ]
     } ]
   } ]

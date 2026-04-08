@@ -19,9 +19,9 @@
 // <h>Zigbee Network Steering configuration
 
 // <o SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_CHANNEL_MASK> Channel Mask (hex) <0-0xFFFFFFFF> <f.h>
-// <i> Default: 0x02108800
+// <i> Default: 0x07FFF800
 // <i> The channels that the plugin will scan when forming and joining.
-#define SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_CHANNEL_MASK       0x02108800
+#define SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_CHANNEL_MASK       0x07FFF800
 
 // <o SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER> Radio output power <-8..20>
 // <i> Default: 3

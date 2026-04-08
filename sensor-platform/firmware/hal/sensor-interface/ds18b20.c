@@ -115,6 +115,8 @@ ds18b20_status_t ds18b20_read_temperature(const onewire_bus_t *bus,
                                           ds18b20_sensor_t *sensor)
 {
   uint8_t scratchpad[SCRATCHPAD_SIZE];
+  bool all_zero = true;
+  bool all_ff = true;
 
   if (!sensor->connected) {
     sensor->last_status = DS18B20_ERR_NO_DEVICE;
@@ -134,6 +136,18 @@ ds18b20_status_t ds18b20_read_temperature(const onewire_bus_t *bus,
   /* Read all 9 bytes */
   for (uint8_t i = 0; i < SCRATCHPAD_SIZE; i++) {
     scratchpad[i] = onewire_read_byte(bus);
+    if (scratchpad[i] != 0x00) {
+      all_zero = false;
+    }
+    if (scratchpad[i] != 0xFF) {
+      all_ff = false;
+    }
+  }
+
+  /* Reject obvious bus-fault patterns before CRC/temperature conversion. */
+  if (all_zero || all_ff) {
+    sensor->last_status = DS18B20_ERR_BUS_PATTERN;
+    return DS18B20_ERR_BUS_PATTERN;
   }
 
   /* Validate CRC8 (byte 8 is CRC over bytes 0-7) */
@@ -149,6 +163,14 @@ ds18b20_status_t ds18b20_read_temperature(const onewire_bus_t *bus,
   if (raw == DS18B20_POWER_ON_TEMP_RAW) {
     sensor->last_status = DS18B20_ERR_DISCONNECTED;
     return DS18B20_ERR_DISCONNECTED;
+  }
+
+  /* Treat exact 0.0 C as suspicious until the bus is proven stable.
+   * On this product the default false-positive pattern tends to appear as 0x0000,
+   * which would otherwise surface in HA as a misleading valid value. */
+  if (raw == 0x0000) {
+    sensor->last_status = DS18B20_ERR_BUS_PATTERN;
+    return DS18B20_ERR_BUS_PATTERN;
   }
 
   /* 12-bit resolution: 1 LSB = 0.0625 C */

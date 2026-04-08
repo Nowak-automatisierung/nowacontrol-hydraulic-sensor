@@ -1,0 +1,66 @@
+name: Release Home Assistant Package
+
+on:
+  push:
+    tags:
+      - "ha-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Home Assistant package version (for example 0.1.0)"
+        required: true
+      prerelease:
+        description: "Create prerelease"
+        required: false
+        default: "false"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="ha-v${VERSION}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#ha-v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Home Assistant package zip
+        shell: bash
+        run: |
+          python sensor-platform/tools/release/package_homeassistant.py \
+            --version "${{ steps.version.outputs.version }}" \
+            --output dist/homeassistant
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: homeassistant-package-${{ steps.version.outputs.version }}
+          path: dist/homeassistant/*
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Home Assistant ${{ steps.version.outputs.version }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          files: |
+            dist/homeassistant/*
+

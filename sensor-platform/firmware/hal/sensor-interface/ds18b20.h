@@ -62,6 +62,7 @@ typedef enum {
   DS18B20_ERR_NOT_DS18B20,      /**< Device is not a DS18B20         */
   DS18B20_ERR_CONVERSION,       /**< Temperature conversion failed   */
   DS18B20_ERR_DISCONNECTED,     /**< Sensor disconnected (85.0 C)    */
+  DS18B20_ERR_BUS_PATTERN,      /**< Invalid all-0/all-1 bus pattern */
 } ds18b20_status_t;
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,18 @@
+install_zha_quirk:
+  name: Install ZHA quirk
+  description: Kopiert den mitgelieferten nowaControl-ZHA-Quirk in den Home-Assistant-Quirk-Pfad.
+  fields:
+    overwrite:
+      name: Overwrite
+      description: Bestehende Quirk-Datei ersetzen.
+      required: false
+      selector:
+        boolean:
+
+remove_zha_quirk:
+  name: Remove ZHA quirk
+  description: Entfernt die installierte nowaControl-Quirk-Datei aus dem Home-Assistant-Quirk-Pfad.
+
+show_quirk_status:
+  name: Show quirk status
+  description: Zeigt den Paket- und Installationsstatus des nowaControl-ZHA-Quirks als Home-Assistant-Benachrichtigung an.

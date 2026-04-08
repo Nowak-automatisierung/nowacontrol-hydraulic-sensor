@@ -65,6 +65,22 @@ sensor_hal_status_t sensor_hal_init(void)
   return SENSOR_HAL_OK;
 }
 
+sensor_hal_status_t sensor_hal_rescan(void)
+{
+  /* Re-run discovery on the live bus. Keep counters, but refresh the sensor list. */
+  uint16_t read_count = s_reading.read_count;
+  uint16_t error_count = s_reading.error_count;
+  uint32_t timestamp_ms = s_reading.timestamp_ms;
+
+  sensor_hal_status_t status = sensor_hal_init();
+
+  s_reading.read_count = read_count;
+  s_reading.error_count = error_count;
+  s_reading.timestamp_ms = timestamp_ms;
+
+  return status;
+}
+
 sensor_hal_status_t sensor_hal_start_conversion(void)
 {
   if (!s_initialized) {
@@ -90,6 +106,14 @@ sensor_hal_status_t sensor_hal_read_all(void)
   if (!s_initialized) {
     return SENSOR_HAL_ERR_INIT;
   }
+
+  /* Start every read cycle from a known-invalid state so HA never keeps
+   * stale temperatures when a sensor disappears or the bus glitches. */
+  s_reading.vorlauf_temp = DS18B20_INVALID_TEMP;
+  s_reading.ruecklauf_temp = DS18B20_INVALID_TEMP;
+  s_reading.delta_t = DS18B20_INVALID_TEMP;
+  s_reading.vorlauf_valid = false;
+  s_reading.ruecklauf_valid = false;
 
   uint8_t success_count = 0;
 
@@ -189,6 +213,14 @@ float sensor_hal_get_delta_t(void)
 uint8_t sensor_hal_get_sensor_count(void)
 {
   return s_sensor_count;
+}
+
+const ds18b20_sensor_t* sensor_hal_get_sensor(uint8_t index)
+{
+  if (index >= s_sensor_count) {
+    return NULL;
+  }
+  return &s_sensors[index];
 }
 
 sensor_hal_status_t sensor_hal_assign_sensor(uint8_t index,
