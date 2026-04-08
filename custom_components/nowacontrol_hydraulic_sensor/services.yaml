@@ -1,6 +1,6 @@
 install_zha_quirk:
   name: Install ZHA quirk
-  description: Kopiert den mitgelieferten nowaControl-ZHA-Quirk in den Home-Assistant-Quirk-Pfad.
+  description: Kopiert den mitgelieferten nowaControl-ZHA-Quirk in den Home-Assistant-Quirk-Pfad. Im Normalfall macht das die Integration bereits automatisch.
   fields:
     overwrite:
       name: Overwrite
@@ -11,8 +11,8 @@ install_zha_quirk:
 
 remove_zha_quirk:
   name: Remove ZHA quirk
-  description: Entfernt die installierte nowaControl-Quirk-Datei aus dem Home-Assistant-Quirk-Pfad.
+  description: Entfernt die installierte nowaControl-Quirk-Datei aus dem Home-Assistant-Quirk-Pfad. Vor allem fuer Support und Rueckbau gedacht.
 
 show_quirk_status:
   name: Show quirk status
-  description: Zeigt den Paket- und Installationsstatus des nowaControl-ZHA-Quirks als Home-Assistant-Benachrichtigung an.
+  description: Zeigt den Paket-, Installations- und Auto-Setup-Status des nowaControl-ZHA-Quirks als Home-Assistant-Benachrichtigung an.

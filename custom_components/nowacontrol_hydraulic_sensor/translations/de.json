@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "nowaControl Hydraulic Sensor",
+        "description": "Richte die nowaControl-Hilfsintegration fuer ZHA-Quirk, Status und UI-Setup ein.",
+        "data": {
+          "path": "Pfad fuer benutzerdefinierte ZHA-Quirks",
+          "auto_install_quirk": "ZHA-Quirk automatisch installieren",
+          "show_notifications": "Hinweise und Neustart-Erinnerungen anzeigen"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Die nowaControl Hydraulic Sensor Integration ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "nowaControl Hydraulic Sensor",
+        "description": "Passe den Quirk-Pfad und das UI-Verhalten an.",
+        "data": {
+          "path": "Pfad fuer benutzerdefinierte ZHA-Quirks",
+          "auto_install_quirk": "ZHA-Quirk automatisch installieren",
+          "show_notifications": "Hinweise und Neustart-Erinnerungen anzeigen"
+        }
+      }
+    }
+  },
+  "issues": {
+    "zha_custom_quirks_path": {
+      "title": "ZHA custom_quirks_path fehlt oder passt nicht",
+      "description": "Die nowaControl-Integration erwartet in deiner `configuration.yaml` einen passenden ZHA-Quirk-Pfad.\n\nBitte pruefe diesen Eintrag und starte Home Assistant danach neu:\n\n```yaml\nzha:\n  custom_quirks_path: {path}\n```"
+    },
+    "quirk_not_installed": {
+      "title": "nowaControl ZHA-Quirk ist noch nicht installiert",
+      "description": "Der nowaControl-ZHA-Quirk fehlt noch im aktiven Home-Assistant-Quirk-Pfad. Starte die Reparatur, um die mitgelieferte Quirk-Datei automatisch zu installieren.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "ZHA-Quirk installieren",
+            "description": "Die nowaControl-Integration kopiert jetzt die passende Quirk-Datei in deinen konfigurierten ZHA-Quirk-Pfad."
+          }
+        }
+      }
+    },
+    "restart_required": {
+      "title": "Home Assistant Neustart fuer den ZHA-Quirk erforderlich",
+      "description": "Der nowaControl-ZHA-Quirk ist installiert. Starte Home Assistant jetzt neu und lerne den Sensor danach in ZHA erneut an, damit die neuen Entitaeten und Einstellungen sauber interviewt werden."
+    }
+  }
+}

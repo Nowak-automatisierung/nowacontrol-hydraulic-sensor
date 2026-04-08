@@ -3,57 +3,53 @@
 ## Ziel
 Dieses Runbook beschreibt den praktisch nutzbaren Installationspfad fuer die aktuelle Home-Assistant-Instanz.
 
-## Wichtiger HACS-Hinweis
-HACS kann laut offizieller Dokumentation **keine privaten GitHub-Repositories** als Custom Repository verwenden. Solange `Nowak-automatisierung/nowacontrol-hydraulic-sensor` privat bleibt, ist fuer die aktuelle Instanz der **lokale Installationspfad** der verlaessliche Weg.
+## Aktueller Installationspfad
+Das Repository ist jetzt oeffentlich und HACS-faehig. Der bevorzugte Weg ist deshalb:
 
-## Pfad A - Sofort nutzbar mit privatem Repository
+1. Repository in HACS als `Integration` hinzufuegen
+2. Paket aus HACS installieren
+3. Integration ueber `Einstellungen -> Geraete & Dienste -> Integration hinzufuegen -> nowaControl Hydraulic Sensor` einrichten
+4. nur den ZHA-Basis-Pfad in `configuration.yaml` setzen
 
-### 1. Home-Assistant-Paket lokal kopieren
-Kopiere aus dem Repository:
+## Pfad A - HACS + UI-first
 
-- `custom_components/nowacontrol_hydraulic_sensor/`
+### 1. HACS Custom Repository
+- Repository URL:
+  `https://github.com/Nowak-automatisierung/nowacontrol-hydraulic-sensor`
+- Typ: `Integration`
 
-nach:
+### 2. Integration installieren
+Danach das Paket in HACS installieren.
 
-- `/config/custom_components/nowacontrol_hydraulic_sensor/`
+### 3. Integration im UI einrichten
+In Home Assistant:
 
-### 2. configuration.yaml ergaenzen
+- `Einstellungen`
+- `Geraete & Dienste`
+- `Integration hinzufuegen`
+- `nowaControl Hydraulic Sensor`
+
+### 4. configuration.yaml ergaenzen
 
 ```yaml
-nowacontrol_hydraulic_sensor:
-
 zha:
   custom_quirks_path: /config/custom_zha_quirks
 ```
 
-### 3. Home Assistant neu starten
+### 5. Home Assistant neu starten
 
-### 4. Service zum Installieren des Quirks ausfuehren
-Nach dem Neustart in Home Assistant ausfuehren:
+### 6. Quirk-Status im UI pruefen
+- Wenn Auto-Install aktiv ist, installiert die Integration den ZHA-Quirk selbst.
+- Wenn ein Repair-Hinweis erscheint, diesen bestaetigen.
+- Services bleiben nur als Fallback fuer Support/Wartung bestehen.
 
-- `nowacontrol_hydraulic_sensor.install_zha_quirk`
+### 7. Home Assistant erneut neu starten
 
-Optional:
-- `nowacontrol_hydraulic_sensor.show_quirk_status`
-
-### 5. Home Assistant erneut neu starten
-
-### 6. Sensor in ZHA loeschen und neu anlernen
+### 8. Sensor in ZHA loeschen und neu anlernen
 Das ist wichtig, damit ZHA den Hersteller-Cluster `0xFC10` und den Delta-T-Endpoint neu interviewt.
 
-## Pfad B - Spaeterer HACS-Rollout
-Dieser Pfad ist erst sinnvoll, wenn das Repository oeffentlich ist oder in eine oeffentliche HACS-geeignete Release-Struktur ueberfuehrt wurde.
-
-### HACS Custom Repository
-- Repository URL eintragen
-- Typ: `Integration`
-
-Danach:
-1. Integration ueber HACS installieren
-2. `configuration.yaml` wie oben ergaenzen
-3. Quirk ueber den Installationsservice deployen
-4. Home Assistant neu starten
-5. Sensor neu anlernen
+## Pfad B - Lokaler Fallback
+Falls HACS in einer Zielumgebung nicht verfuegbar ist, bleibt der lokale Installationspfad ueber `/config/custom_components/` als Fallback erhalten.
 
 ## Erwartete Entitaeten
 - Vorlauf Temperatur

@@ -5,7 +5,8 @@ Dieses Paket ist die Home-Assistant-/HACS-Schicht fuer den nowaControl Hydraulic
 ## Rolle
 - stellt die HACS-/Home-Assistant-Metadaten bereit
 - liefert den nowaControl-ZHA-Quirk als mitgeliefertes Paketartefakt aus
-- registriert Home-Assistant-Services fuer Quirk-Installation und Statuspruefung
+- bietet einen echten Home-Assistant-Setupdialog ueber `Geraet hinzufuegen`
+- stellt Optionen, Reparaturhinweise und Services fuer Quirk-Installation und Statuspruefung bereit
 - dokumentiert die Trennung zwischen HACS-Integration und Zigbee-Firmware
 
 ## Wichtige Architekturregel
@@ -17,22 +18,25 @@ Dieses Paket loest das sauber, indem es:
 - die notwendigen naechsten Schritte per Home-Assistant-Benachrichtigung anzeigt
 
 ## Aktivierung in Home Assistant
-Wenn das GitHub-Repository privat ist, nutze fuer die aktuelle Installation den lokalen Pfad ueber `/config/custom_components/`. HACS kann private GitHub-Repositories laut offizieller HACS-Dokumentation nicht als Custom Repository verwenden.
-
 1. Paket ueber HACS installieren.
-2. In `configuration.yaml` hinzufuegen:
+2. Die Integration anschliessend ueber `Einstellungen -> Geraete & Dienste -> Integration hinzufuegen -> nowaControl Hydraulic Sensor` einrichten.
+3. In `configuration.yaml` bleibt weiterhin der ZHA-Basiseintrag noetig:
 
 ```yaml
-nowacontrol_hydraulic_sensor:
-
 zha:
   custom_quirks_path: /config/custom_zha_quirks
 ```
 
-3. Home Assistant neu starten.
-4. Service `nowacontrol_hydraulic_sensor.install_zha_quirk` ausfuehren.
-5. Home Assistant erneut neu starten.
-6. Sensor in ZHA neu anlernen.
+4. Home Assistant neu starten.
+5. Im UI pruefen, ob die Integration den Quirk automatisch installiert hat.
+6. Falls ein Repair-Hinweis erscheint, diesen im UI bestaetigen.
+7. Sensor in ZHA neu anlernen.
+
+## UI-first Verhalten
+- Config Flow fuer den ersten Setupdialog
+- Options Flow fuer Pfad, Auto-Install und Benachrichtigungen
+- Repairs fuer fehlenden Quirk oder falschen ZHA-Quirk-Pfad
+- Services bleiben als Fallback fuer Wartung und Support erhalten
 
 ## Verfuegbare Services
 - `nowacontrol_hydraulic_sensor.install_zha_quirk`

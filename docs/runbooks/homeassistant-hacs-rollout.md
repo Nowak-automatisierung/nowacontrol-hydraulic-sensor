@@ -4,7 +4,7 @@
 Saubere Installation der nowaControl Home-Assistant-Seite als HACS Custom Repository, ohne den Firmware-Quellpfad zu vermischen.
 
 ## Wichtige Vorbedingung
-HACS Custom Repositories erwarten in der Praxis ein GitHub-Repository mit passender Paketstruktur. Fuer einen produktiven HACS-Rollout sollte ein oeffentliches oder explizit HACS-zugaengliches Repository eingeplant werden.
+HACS Custom Repositories erwarten ein oeffentliches GitHub-Repository mit passender Paketstruktur. Dieses Repository erfuellt diesen Pfad jetzt ueber `hacs.json` am Root und das Paket unter `custom_components/`.
 
 ## Empfohlene Betriebsform
 - Monorepo bleibt Source of Truth.
@@ -15,16 +15,18 @@ HACS Custom Repositories erwarten in der Praxis ein GitHub-Repository mit passen
 ## Installationspfad in Home Assistant
 1. HACS Custom Repository eintragen.
 2. Integration aus HACS installieren.
-3. `configuration.yaml` fuer ZHA-Quirks ergaenzen:
+3. Integration ueber `Einstellungen -> Geraete & Dienste -> Integration hinzufuegen -> nowaControl Hydraulic Sensor` einrichten.
+4. `configuration.yaml` fuer ZHA-Quirks ergaenzen:
 
 ```yaml
 zha:
   custom_quirks_path: /config/custom_zha_quirks
 ```
 
-4. Quirk-Dateien aus dem Repository nach `/config/custom_zha_quirks/` kopieren.
 5. Home Assistant neu starten.
-6. Sensor neu anlernen.
+6. Die Integration installiert den Quirk automatisch oder zeigt einen Repair-Hinweis zum Installieren an.
+7. Home Assistant erneut neu starten.
+8. Sensor neu anlernen.
 
 ## Sichtbare Ziel-Entitaeten
 - Vorlauf Temperatur

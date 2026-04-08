@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "nowaControl Hydraulic Sensor",
+        "description": "Set up the nowaControl helper integration for ZHA quirk deployment, status and UI-first setup.",
+        "data": {
+          "path": "Custom ZHA quirk path",
+          "auto_install_quirk": "Install the ZHA quirk automatically",
+          "show_notifications": "Show setup and restart notifications"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "The nowaControl Hydraulic Sensor integration is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "nowaControl Hydraulic Sensor",
+        "description": "Adjust the quirk path and UI behavior.",
+        "data": {
+          "path": "Custom ZHA quirk path",
+          "auto_install_quirk": "Install the ZHA quirk automatically",
+          "show_notifications": "Show setup and restart notifications"
+        }
+      }
+    }
+  },
+  "issues": {
+    "zha_custom_quirks_path": {
+      "title": "ZHA custom_quirks_path missing or mismatched",
+      "description": "The nowaControl integration expects a matching ZHA quirk path in your `configuration.yaml`.\n\nPlease verify this entry and restart Home Assistant afterwards:\n\n```yaml\nzha:\n  custom_quirks_path: {path}\n```"
+    },
+    "quirk_not_installed": {
+      "title": "nowaControl ZHA quirk is not installed yet",
+      "description": "The nowaControl ZHA quirk is still missing from the active Home Assistant quirk path. Start the repair to install the bundled quirk file automatically.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Install ZHA quirk",
+            "description": "The nowaControl integration will now copy the bundled quirk file into your configured ZHA quirk path."
+          }
+        }
+      }
+    },
+    "restart_required": {
+      "title": "Home Assistant restart required for the ZHA quirk",
+      "description": "The nowaControl ZHA quirk is installed. Restart Home Assistant now and pair the sensor in ZHA again so the new entities and settings are interviewed cleanly."
+    }
+  }
+}
