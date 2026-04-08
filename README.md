@@ -53,14 +53,13 @@ Neu angelegt fuer den professionellen Finalpfad:
 - `docs/architecture/codex-migration-target.md` als Migrations-Source-of-Truth
 - `docs/runbooks/github-public-hacs-cutover.md` als Schritt-fuer-Schritt-Pfad fuer GitHub/HACS-Rollout
 
-`CLAUDE.md` und `.claude/` gelten als Legacy-Bestand und werden erst nach dokumentierter Uebernahme bereinigt.
+Die frueheren Claude-spezifischen Workspace-Dateien wurden aus dem produktiven Pfad entfernt. `CODEX.md` ist jetzt die bevorzugte Einstiegspunkt-Dokumentation.
 
 ## Repository-Struktur
 
 ```text
 CODEX.md               Codex-Einstieg und Arbeitsregeln
 custom_components/      HACS-/Home-Assistant-Zielpaket
-.claude/               Legacy Claude-Projektkontext, Agenten, Skills
 .github/workflows/     GitHub-Automatisierung
 admin-portal/          Verwaltungs- und Produktoberflaechen
 device-cloud/          Cloud-Services, u. a. Update-Service
@@ -68,5 +67,5 @@ docs/                  Architektur, Hardware, Protokolle, Release-Dokumente
 infra/                 Infrastruktur und Betriebsartefakte
 marketing-site/        Marketing-/Web-Praesenz
 sensor-platform/       Geraete-, Firmware-, Hardware- und Testbasis
-tools/scaffold/        Projekt- und Worktree-Scaffolding
+scripts/               Flash-, Service- und Betriebs-Skripte
 

@@ -7,7 +7,7 @@ Dieses Repository ist die produktive Source of Truth fuer den nowaControl Hydrau
 - Bestehende, funktionierende Sensorpfade nicht unbeabsichtigt brechen.
 - Firmware-Aenderungen immer gegen den funktionierenden Pfad `sensor-platform/firmware/applications/zigbee-ha` beurteilen.
 - Home-Assistant-/HACS-Strukturen additiv und versionierbar entwickeln.
-- Claude-spezifische Altlasten erst nach dokumentierter Uebernahme entfernen.
+- Keine neuen Claude-spezifischen Strukturen mehr einführen.
 - Release-, OTA- und HACS-Artefakte als getrennte Lieferpfade behandeln.
 
 ## Produktrelevante Bereiche
@@ -17,9 +17,9 @@ Dieses Repository ist die produktive Source of Truth fuer den nowaControl Hydrau
 - `docs/` Architektur, Runbooks, Release- und Integrationsdokumente
 - `scripts/` Flash- und Service-Skripte
 
-## Aktuell bekannte Altlasten
-- `.claude/` und insbesondere `.claude/worktrees/` sind Legacy-Strukturen aus der Claude-Phase.
-- `CLAUDE.md` bleibt vorerst als Referenz erhalten, ist aber nicht mehr die bevorzugte Projekt-Einstiegsdatei.
+## Bereinigte Altlasten
+- Die früheren Claude-Workspace-Dateien und Claude-Scaffold-Skripte wurden aus dem produktiven Repository entfernt.
+- Lokal ignorierte Restverzeichnisse wie `.claude/worktrees/` bleiben außerhalb des produktiven Git-Pfads.
 
 ## Definition of done
 - Funktionierende Sensorpfade bleiben intakt.

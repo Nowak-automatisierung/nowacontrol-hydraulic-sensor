@@ -6,7 +6,7 @@ Dieses Dokument definiert die migrationssichere Zielarchitektur fuer das nowaCon
 ## Leitprinzipien
 - Der funktionierende Zigbee-/DS18B20-Pfad unter `sensor-platform/firmware/applications/zigbee-ha` bleibt der technische Referenzpfad.
 - Neue Home-Assistant-/HACS-Strukturen werden additiv aufgebaut und erst spaeter zur produktiven Distribution erklaert.
-- Claude-spezifische Artefakte werden zuerst dokumentiert, dann gezielt abgeloest, erst am Ende entfernt.
+- Claude-spezifische Artefakte werden nicht weitergefuehrt; das Repository wird konsequent auf Codex ausgerichtet.
 - Firmware, Quirks, HACS-Integration und OTA-Assets bekommen klar getrennte Verantwortlichkeiten.
 
 ## Aktueller stabiler Produktpfad
@@ -16,12 +16,11 @@ Dieses Dokument definiert die migrationssichere Zielarchitektur fuer das nowaCon
 - App-Artefakt: `sensor-platform/firmware/applications/zigbee-ha/cmake_gcc/build/base/nowacontrol-zigbee-ha.hex`
 - ZHA-Quirk-Quellen: `homeassistant/zha_quirks/`
 
-## Problemzonen / Altlasten
-- `.claude/` enthaelt Projektlogik, Skills, Regeln und lokale Worktree-Kopien.
-- `.claude/worktrees/` dupliziert grosse Teile des Repositories und ist keine produktive Source of Truth.
-- `README.md` und `CLAUDE.md` beschreiben den Workspace noch aus Claude-Sicht.
-- Es gibt noch keine HACS-faehige `custom_components/<domain>`-Struktur.
-- `.github/workflows/` ist praktisch leer; Release-, OTA- und Paket-Workflows fehlen.
+## Ehemalige Problemzonen / Altlasten
+- Claude-spezifische Workspace-Dateien und Scaffold-Skripte wurden aus dem produktiven Git-Pfad entfernt.
+- Lokal erzeugte Claude-Worktrees bleiben ignoriert und sind keine Source of Truth.
+- Die HACS-faehige `custom_components/<domain>`-Struktur ist jetzt vorhanden.
+- Release-, OTA- und Paket-Workflows sind angelegt und muessen nur noch produktiv genutzt werden.
 
 ## Zielarchitektur
 ```text
@@ -64,11 +63,11 @@ docs/
 2. HACS-/HA-Struktur additiv aufbauen.
 3. README/Doku auf Codex-Zielbild aktualisieren.
 4. Release-/OTA-Workflows ergaenzen.
-5. Claude-Artefakte als deprecated markieren.
-6. Claude-Worktree-Dubletten erst nach erfolgreicher Uebernahme entfernen.
+5. Claude-Artefakte aus dem produktiven Pfad entfernen.
+6. GitHub-/HACS-Rollout standardisieren.
 
-## Sofortige No-Go-Regeln
-- Keine Loeschung von `.claude/` oder `.claude/worktrees/`, bevor die neue Struktur dokumentiert und verifiziert ist.
+## No-Go-Regeln
 - Keine Aenderung am funktionierenden Flashpfad ohne Ersatz.
 - Keine Vermischung von HACS-Paketdateien mit den Firmware-Buildverzeichnissen.
+- Keine Rueckkehr zu gemischten Claude-/Codex-Strukturen.
 
