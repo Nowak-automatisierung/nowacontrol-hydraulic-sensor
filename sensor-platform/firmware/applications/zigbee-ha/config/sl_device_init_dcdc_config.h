@@ -41,7 +41,7 @@
 // <q SL_DEVICE_INIT_DCDC_BYPASS> Set DC/DC Converter in Bypass Mode
 // <i>
 // <i> Default: 0
-#define SL_DEVICE_INIT_DCDC_BYPASS         0
+#define SL_DEVICE_INIT_DCDC_BYPASS         1
 
 // <q SL_DEVICE_INIT_DCDC_PFMX_IPKVAL_OVERRIDE> Override for DCDC PFMX Mode Peak Current Setting
 // <i>

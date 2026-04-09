@@ -154,26 +154,15 @@ void sl_zigbee_af_main_init_cb(void)
     apply_or_learn_sensor_mapping();
     log_sensor_inventory();
 
-    sensor_hal_status_t measure_st = sensor_hal_measure();
-    s_last_measure_status = (uint8_t)measure_st;
     const sensor_reading_t *reading = sensor_hal_get_reading();
-    if (measure_st == SENSOR_HAL_OK || measure_st == SENSOR_HAL_ERR_PARTIAL) {
-      apply_reading_to_attributes(reading);
-      sync_nowa_cluster_attributes(reading);
-      sl_zigbee_app_debug_println(
-        "Boot measurement: found=%d reads=%u errors=%u vorlauf_valid=%d ruecklauf_valid=%d",
-        sensor_hal_get_sensor_count(),
-        (unsigned int)reading->read_count,
-        (unsigned int)reading->error_count,
-        reading->vorlauf_valid ? 1 : 0,
-        reading->ruecklauf_valid ? 1 : 0);
-    } else {
-      invalidate_temperature_attribute(ENDPOINT_VORLAUF);
-      invalidate_temperature_attribute(ENDPOINT_RUECKLAUF);
-      invalidate_delta_t_attribute();
-      sync_nowa_cluster_attributes(reading);
-      sl_zigbee_app_debug_println("Boot measurement failed: %d", (int)measure_st);
-    }
+    s_last_measure_status = SENSOR_HAL_OK;
+    invalidate_temperature_attribute(ENDPOINT_VORLAUF);
+    invalidate_temperature_attribute(ENDPOINT_RUECKLAUF);
+    invalidate_delta_t_attribute();
+    sync_nowa_cluster_attributes(reading);
+    sl_zigbee_af_event_set_delay_ms(&measurement_event, 1000);
+    sl_zigbee_app_debug_println(
+      "Boot measurement deferred: non-blocking measurement event will run after startup");
   } else {
     sensor_initialized = false;
     sl_zigbee_app_debug_println("Sensor HAL: init failed (%d) – check wiring on PC2 / XIAO D2",
