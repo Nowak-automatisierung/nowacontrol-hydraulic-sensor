@@ -23,6 +23,7 @@ from .const import (
     ISSUE_QUIRK_MISSING,
     ISSUE_RESTART_REQUIRED,
     ISSUE_ZHA_PATH,
+    ZHA_CONF_CUSTOM_QUIRKS_PATH,
 )
 from .services import (
     async_install_quirk,
@@ -62,7 +63,7 @@ def _ensure_domain_data(hass: HomeAssistant) -> dict[str, Any]:
 def _zha_custom_quirks_path(config: dict[str, Any]) -> str | None:
     zha_config = config.get("zha", {})
     if isinstance(zha_config, dict):
-        return zha_config.get(CONF_PATH)
+        return zha_config.get(ZHA_CONF_CUSTOM_QUIRKS_PATH)
     return None
 
 

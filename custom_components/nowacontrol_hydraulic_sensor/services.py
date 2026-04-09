@@ -43,6 +43,9 @@ def _packaged_quirk_readme_path() -> Path:
 
 
 def _target_dir(hass: HomeAssistant, custom_quirks_path: str) -> Path:
+    target = Path(custom_quirks_path)
+    if target.is_absolute():
+        return target
     return Path(hass.config.path(custom_quirks_path))
 
 
