@@ -66,6 +66,18 @@ def _zha_custom_quirks_path(config: dict[str, Any]) -> str | None:
     return None
 
 
+def _normalize_quirks_path(path: str | None) -> str | None:
+    """Normalize quirk paths for comparison in HA UI and config."""
+    if not path:
+        return None
+    normalized = path.replace("\\", "/").rstrip("/")
+    if normalized.startswith("/config/"):
+        return normalized
+    if normalized == "custom_zha_quirks":
+        return "/config/custom_zha_quirks"
+    return f"/config/{normalized.lstrip('/')}"
+
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the integration and import YAML defaults if present."""
     domain_data = _ensure_domain_data(hass)
@@ -103,8 +115,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await async_register_services(hass)
 
-    zha_path = domain_data.get("yaml", {}).get("zha_custom_quirks_path")
+    zha_path = _normalize_quirks_path(domain_data.get("yaml", {}).get("zha_custom_quirks_path"))
     configured_path = settings[CONF_PATH]
+    normalized_configured_path = _normalize_quirks_path(configured_path)
 
     if not zha_path:
         ir.async_create_issue(
@@ -117,7 +130,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             learn_more_url="https://www.home-assistant.io/integrations/zha/",
             translation_placeholders={"path": ui_quirks_path(configured_path)},
         )
-    elif zha_path not in {configured_path, f"/config/{configured_path}"}:
+    elif zha_path != normalized_configured_path:
         ir.async_create_issue(
             hass,
             DOMAIN,

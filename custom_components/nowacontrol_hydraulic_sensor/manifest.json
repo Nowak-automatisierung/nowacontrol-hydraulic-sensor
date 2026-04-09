@@ -1,7 +1,7 @@
 {
   "domain": "nowacontrol_hydraulic_sensor",
   "name": "nowaControl Hydraulic Sensor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "documentation": "https://github.com/Nowak-automatisierung/nowacontrol-hydraulic-sensor",
   "issue_tracker": "https://github.com/Nowak-automatisierung/nowacontrol-hydraulic-sensor/issues",
   "dependencies": [],
