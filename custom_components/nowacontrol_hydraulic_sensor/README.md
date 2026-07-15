@@ -12,11 +12,18 @@ Dieses Paket ist die Home-Assistant-/HACS-Schicht fuer den nowaControl Hydraulic
 ## Wichtige Architekturregel
 ZHA-Quirks leben in Home Assistant nicht innerhalb von `custom_components`, sondern im durch ZHA konfigurierten Quirk-Pfad, typischerweise `/config/custom_zha_quirks/`.
 
-Der Quirk wird weiterhin als Paketartefakt ausgeliefert. Direkte Dateischreibzugriffe
-der Integration sind als P0-Containment standardmaessig und unabhaengig von alten
-Konfigurationswerten deaktiviert. Installieren, Ueberschreiben und Entfernen werden
-deterministisch verweigert; eine spaetere Reaktivierung erfordert einen separaten
-Security- und Commissioning-Vertrag.
+Der Quirk wird weiterhin als Paketartefakt ausgeliefert. Produktdatei- und
+caller-kontrollierte Zielpfad-Schreibzugriffe der Integration sind als
+P0-Containment standardmaessig und unabhaengig von alten Konfigurationswerten
+deaktiviert. Installieren, Ueberschreiben und Entfernen werden deterministisch
+verweigert; eine spaetere Reaktivierung erfordert einen separaten Security- und
+Commissioning-Vertrag.
+
+Der Sicherheitsvertrag lautet `NO_PRODUCT_FILE_WRITE` und
+`NO_CALLER_CONTROLLED_PATH_WRITE`. Home-Assistant-eigene Persistenz fuer Config
+Entries, Options und Issue Registry sowie die Statusbenachrichtigung bleiben
+erhalten. Diese Framework-Operationen waehlen kein Dateisystemziel und veraendern
+keine Quirk- oder Produktdatei.
 
 ## Aktivierung in Home Assistant
 1. Paket ueber HACS installieren.

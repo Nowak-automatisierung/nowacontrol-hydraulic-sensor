@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PATH
 from homeassistant.core import HomeAssistant
@@ -26,14 +25,11 @@ from .const import (
     ZHA_CONF_CUSTOM_QUIRKS_PATH,
 )
 from .services import (
-    async_install_quirk,
+    active_quirks_path_is_valid,
     async_register_services,
     get_active_settings,
     quirk_exists,
-    ui_quirks_path,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -60,15 +56,18 @@ def _ensure_domain_data(hass: HomeAssistant) -> dict[str, Any]:
     return domain_data
 
 
-def _zha_custom_quirks_path(config: dict[str, Any]) -> str | None:
+def _zha_custom_quirks_path(config: dict[str, Any]) -> object | None:
     zha_config = config.get("zha", {})
-    if isinstance(zha_config, dict):
+    if isinstance(zha_config, Mapping):
         return zha_config.get(ZHA_CONF_CUSTOM_QUIRKS_PATH)
     return None
 
 
-def _normalize_quirks_path(path: str | None) -> str | None:
+def _normalize_quirks_path(path: object) -> str | None:
     """Normalize quirk paths for comparison in HA UI and config."""
+    if not isinstance(path, str):
+        return None
+    path = path.strip()
     if not path:
         return None
     normalized = path.replace("\\", "/").rstrip("/")
@@ -83,6 +82,8 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the integration and import YAML defaults if present."""
     domain_data = _ensure_domain_data(hass)
     yaml_config = config.get(DOMAIN, {})
+    if not isinstance(yaml_config, Mapping):
+        yaml_config = {}
     domain_data["yaml"] = {
         CONF_PATH: yaml_config.get(CONF_PATH, DEFAULT_CUSTOM_QUIRKS_DIR),
         CONF_AUTO_INSTALL_QUIRK: yaml_config.get(
@@ -95,6 +96,9 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     }
 
     await async_register_services(hass)
+
+    # HA framework persistence (entries/issues/notifications) remains allowed.
+    # No product file writer or caller-controlled filesystem target is reached.
 
     if DOMAIN in config and not hass.config_entries.async_entries(DOMAIN):
         hass.async_create_task(
@@ -119,8 +123,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     zha_path = _normalize_quirks_path(domain_data.get("yaml", {}).get("zha_custom_quirks_path"))
     configured_path = settings[CONF_PATH]
     normalized_configured_path = _normalize_quirks_path(configured_path)
+    configured_path_is_valid = active_quirks_path_is_valid(hass, entry)
 
-    if not zha_path:
+    # A stale restart issue can only describe a previous writer state. Auto-install
+    # is effectively disabled, so clean it up regardless of the read-only file state.
+    ir.async_delete_issue(hass, DOMAIN, ISSUE_RESTART_REQUIRED)
+
+    if (
+        not configured_path_is_valid
+        or not zha_path
+        or zha_path != normalized_configured_path
+    ):
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -129,48 +142,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             severity=ir.IssueSeverity.ERROR,
             translation_key=ISSUE_ZHA_PATH,
             learn_more_url="https://www.home-assistant.io/integrations/zha/",
-            translation_placeholders={"path": ui_quirks_path(configured_path)},
-        )
-    elif zha_path != normalized_configured_path:
-        ir.async_create_issue(
-            hass,
-            DOMAIN,
-            ISSUE_ZHA_PATH,
-            is_fixable=False,
-            severity=ir.IssueSeverity.ERROR,
-            translation_key=ISSUE_ZHA_PATH,
-            learn_more_url="https://www.home-assistant.io/integrations/zha/",
-            translation_placeholders={"path": ui_quirks_path(configured_path)},
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, ISSUE_ZHA_PATH)
-
-    if settings[CONF_AUTO_INSTALL_QUIRK]:
-        deployed_path, changed = await async_install_quirk(
-            hass,
-            configured_path,
-            overwrite=False,
-        )
-        _LOGGER.debug("nowaControl quirk available at %s", deployed_path)
-        if changed:
-            ir.async_create_issue(
-                hass,
-                DOMAIN,
-                ISSUE_RESTART_REQUIRED,
-                is_fixable=False,
-                severity=ir.IssueSeverity.WARNING,
-                translation_key=ISSUE_RESTART_REQUIRED,
-            )
-            if settings[CONF_SHOW_NOTIFICATIONS]:
-                persistent_notification.async_create(
-                    hass,
-                    (
-                        "Der nowaControl-ZHA-Quirk ist installiert. "
-                        "Bitte Home Assistant neu starten und den Sensor danach in ZHA neu anlernen."
-                    ),
-                    title="nowaControl ZHA-Quirk bereit",
-                    notification_id="nowacontrol_hydraulic_sensor_restart_required",
-                )
 
     if not quirk_exists(hass, configured_path):
         ir.async_create_issue(
@@ -184,8 +158,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, ISSUE_QUIRK_MISSING)
-        if not settings[CONF_AUTO_INSTALL_QUIRK]:
-            ir.async_delete_issue(hass, DOMAIN, ISSUE_RESTART_REQUIRED)
 
     return True
 

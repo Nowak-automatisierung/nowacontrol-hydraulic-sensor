@@ -24,9 +24,14 @@ zha:
 ```
 
 5. Home Assistant neu starten.
-6. Die Integration installiert den Quirk automatisch oder zeigt einen Repair-Hinweis zum Installieren an.
-7. Home Assistant erneut neu starten.
-8. Sensor neu anlernen.
+6. Den read-only Quirk-Status pruefen. Die Integration installiert,
+   ueberschreibt oder entfernt keine Quirk-Datei und bietet keinen
+   installierenden Repair-Flow an.
+7. Fehlt der Quirk, hier stoppen. Der Dateiwriter ist deaktiviert; eine
+   Bereitstellung erfordert eine separate zukuenftige Security- und
+   Commissioning-Freigabe. Dieses Runbook definiert dafuer kein Verfahren.
+8. Neustart und erneutes Anlernen nur fuer einen bereits unabhaengig
+   bereitgestellten und getrennt freigegebenen Quirk ausfuehren.
 
 ## Sichtbare Ziel-Entitaeten
 - Vorlauf Temperatur

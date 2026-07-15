@@ -17,7 +17,8 @@ ISSUE_ZHA_PATH = "zha_custom_quirks_path"
 ISSUE_QUIRK_MISSING = "quirk_not_installed"
 ISSUE_RESTART_REQUIRED = "restart_required"
 FILE_WRITES_DISABLED_MESSAGE = (
-    "Home Assistant file writes are disabled; security commissioning is required."
+    "nowaControl product file writes and caller-controlled path writes are disabled; "
+    "security commissioning is required."
 )
 DEFAULT_AUTO_INSTALL_QUIRK = False
 DEFAULT_SHOW_NOTIFICATIONS = True

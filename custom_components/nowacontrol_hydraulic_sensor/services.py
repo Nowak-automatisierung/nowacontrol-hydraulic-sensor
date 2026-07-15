@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -42,37 +43,71 @@ def _target_quirk_path(hass: HomeAssistant, custom_quirks_path: str) -> Path:
     return _target_dir(hass, custom_quirks_path) / QUIRK_FILENAME
 
 
-def ui_quirks_path(custom_quirks_path: str) -> str:
-    """Return a user-facing quirk path for HA documentation."""
-    return (
-        custom_quirks_path
-        if custom_quirks_path.startswith("/config/")
-        else f"/config/{custom_quirks_path}"
-    )
+def _validated_quirks_path(value: object) -> str | None:
+    """Return a non-empty string path without coercing arbitrary objects."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
 
 
-def quirk_exists(hass: HomeAssistant, custom_quirks_path: str = DEFAULT_CUSTOM_QUIRKS_DIR) -> bool:
+def ui_quirks_path(_custom_quirks_path: object) -> str:
+    """Return a generic, path-free label for user-facing diagnostics."""
+    return "configured ZHA custom quirks directory"
+
+
+def quirk_exists(
+    hass: HomeAssistant,
+    custom_quirks_path: object = DEFAULT_CUSTOM_QUIRKS_DIR,
+) -> bool:
     """Return True if the deployed quirk file exists in HA config."""
-    return _target_quirk_path(hass, custom_quirks_path).exists()
+    safe_path = _validated_quirks_path(custom_quirks_path)
+    if safe_path is None:
+        safe_path = DEFAULT_CUSTOM_QUIRKS_DIR
+    return _target_quirk_path(hass, safe_path).exists()
 
 
-def get_active_settings(hass: HomeAssistant, entry: ConfigEntry | None = None) -> dict[str, Any]:
-    """Return settings with file-writing auto-install forced off."""
-    yaml_data = hass.data.get(DOMAIN, {}).get("yaml", {})
+def _active_settings_data(
+    hass: HomeAssistant,
+    entry: ConfigEntry | None,
+) -> tuple[dict[str, Any], bool]:
+    """Return merged settings plus validity of the selected configured path."""
+    domain_data = hass.data.get(DOMAIN, {})
+    yaml_data = domain_data.get("yaml", {}) if isinstance(domain_data, Mapping) else {}
 
     if entry is None:
         entries = hass.config_entries.async_entries(DOMAIN)
         entry = entries[0] if entries else None
 
-    data = dict(yaml_data)
+    data: dict[str, Any] = {}
+    if isinstance(yaml_data, Mapping):
+        data.update(yaml_data)
     if entry is not None:
-        data.update(entry.data)
-        data.update(entry.options)
+        if isinstance(entry.data, Mapping):
+            data.update(entry.data)
+        if isinstance(entry.options, Mapping):
+            data.update(entry.options)
 
-    data.setdefault(CONF_PATH, DEFAULT_CUSTOM_QUIRKS_DIR)
+    selected_path = data.get(CONF_PATH, DEFAULT_CUSTOM_QUIRKS_DIR)
+    safe_path = _validated_quirks_path(selected_path)
+    path_is_valid = safe_path is not None
+    data[CONF_PATH] = safe_path or DEFAULT_CUSTOM_QUIRKS_DIR
     data[CONF_AUTO_INSTALL_QUIRK] = DEFAULT_AUTO_INSTALL_QUIRK
     data.setdefault(CONF_SHOW_NOTIFICATIONS, DEFAULT_SHOW_NOTIFICATIONS)
-    return data
+    return data, path_is_valid
+
+
+def get_active_settings(hass: HomeAssistant, entry: ConfigEntry | None = None) -> dict[str, Any]:
+    """Return settings with file-writing auto-install forced off."""
+    return _active_settings_data(hass, entry)[0]
+
+
+def active_quirks_path_is_valid(
+    hass: HomeAssistant,
+    entry: ConfigEntry | None = None,
+) -> bool:
+    """Return whether the selected YAML/entry/options path is a valid string."""
+    return _active_settings_data(hass, entry)[1]
 
 
 async def async_install_quirk(
@@ -98,7 +133,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
         persistent_notification.async_create(
             hass,
             FILE_WRITES_DISABLED_MESSAGE,
-            title="nowaControl file writes disabled",
+            title="nowaControl product file writes disabled",
             notification_id="nowacontrol_hydraulic_sensor_writes_disabled",
         )
 
