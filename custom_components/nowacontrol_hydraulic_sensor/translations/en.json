@@ -6,7 +6,7 @@
         "description": "Set up the nowaControl helper integration for ZHA quirk deployment, status and UI-first setup.",
         "data": {
           "path": "Custom ZHA quirk path",
-          "auto_install_quirk": "Install the ZHA quirk automatically",
+          "auto_install_quirk": "Auto-install disabled (security commissioning required)",
           "show_notifications": "Show setup and restart notifications"
         }
       }
@@ -22,7 +22,7 @@
         "description": "Adjust the quirk path and UI behavior.",
         "data": {
           "path": "Custom ZHA quirk path",
-          "auto_install_quirk": "Install the ZHA quirk automatically",
+          "auto_install_quirk": "Auto-install disabled (security commissioning required)",
           "show_notifications": "Show setup and restart notifications"
         }
       }
@@ -35,15 +35,7 @@
     },
     "quirk_not_installed": {
       "title": "nowaControl ZHA quirk is not installed yet",
-      "description": "The nowaControl ZHA quirk is still missing from the active Home Assistant quirk path. Start the repair to install the bundled quirk file automatically.",
-      "fix_flow": {
-        "step": {
-          "confirm": {
-            "title": "Install ZHA quirk",
-            "description": "The nowaControl integration will now copy the bundled quirk file into your configured ZHA quirk path."
-          }
-        }
-      }
+      "description": "Integration file writes are disabled. Any future deployment requires a separate security and commissioning contract."
     },
     "restart_required": {
       "title": "Home Assistant restart required for the ZHA quirk",

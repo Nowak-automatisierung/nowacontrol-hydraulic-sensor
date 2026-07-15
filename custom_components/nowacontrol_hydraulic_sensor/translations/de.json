@@ -6,7 +6,7 @@
         "description": "Richte die nowaControl-Hilfsintegration fuer ZHA-Quirk, Status und UI-Setup ein.",
         "data": {
           "path": "Pfad fuer benutzerdefinierte ZHA-Quirks",
-          "auto_install_quirk": "ZHA-Quirk automatisch installieren",
+          "auto_install_quirk": "Auto-Install deaktiviert (Security-Commissioning erforderlich)",
           "show_notifications": "Hinweise und Neustart-Erinnerungen anzeigen"
         }
       }
@@ -22,7 +22,7 @@
         "description": "Passe den Quirk-Pfad und das UI-Verhalten an.",
         "data": {
           "path": "Pfad fuer benutzerdefinierte ZHA-Quirks",
-          "auto_install_quirk": "ZHA-Quirk automatisch installieren",
+          "auto_install_quirk": "Auto-Install deaktiviert (Security-Commissioning erforderlich)",
           "show_notifications": "Hinweise und Neustart-Erinnerungen anzeigen"
         }
       }
@@ -35,15 +35,7 @@
     },
     "quirk_not_installed": {
       "title": "nowaControl ZHA-Quirk ist noch nicht installiert",
-      "description": "Der nowaControl-ZHA-Quirk fehlt noch im aktiven Home-Assistant-Quirk-Pfad. Starte die Reparatur, um die mitgelieferte Quirk-Datei automatisch zu installieren.",
-      "fix_flow": {
-        "step": {
-          "confirm": {
-            "title": "ZHA-Quirk installieren",
-            "description": "Die nowaControl-Integration kopiert jetzt die passende Quirk-Datei in deinen konfigurierten ZHA-Quirk-Pfad."
-          }
-        }
-      }
+      "description": "Dateischreibzugriffe der Integration sind deaktiviert. Eine spaetere Bereitstellung erfordert einen separaten Security- und Commissioning-Vertrag."
     },
     "restart_required": {
       "title": "Home Assistant Neustart fuer den ZHA-Quirk erforderlich",

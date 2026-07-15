@@ -5,6 +5,7 @@ on:
     paths:
       - "custom_components/**"
       - "homeassistant/zha_quirks/**"
+      - "tests/**"
       - "hacs.json"
       - ".github/workflows/validate-homeassistant.yml"
   push:
@@ -13,6 +14,7 @@ on:
     paths:
       - "custom_components/**"
       - "homeassistant/zha_quirks/**"
+      - "tests/**"
       - "hacs.json"
       - ".github/workflows/validate-homeassistant.yml"
   workflow_dispatch:
@@ -66,8 +68,23 @@ jobs:
 
       - name: Compile Python modules
         shell: bash
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/hyd-ha-01/pycache
         run: |
-          python -m compileall custom_components homeassistant/zha_quirks
+          mkdir -p "$PYTHONPYCACHEPREFIX"
+          python -m compileall custom_components homeassistant/zha_quirks tests
+
+      - name: Run HYD-HA-01 containment tests
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/hyd-ha-01/home
+          TMPDIR: ${{ runner.temp }}/hyd-ha-01/tmp
+          XDG_CACHE_HOME: ${{ runner.temp }}/hyd-ha-01/cache
+          HYD_HA_01_TEST_TMPDIR: ${{ runner.temp }}/hyd-ha-01/artifacts
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          mkdir -p "$HOME" "$TMPDIR" "$XDG_CACHE_HOME" "$HYD_HA_01_TEST_TMPDIR"
+          python -m unittest discover -s tests -v
 
       - name: HACS readiness note
         shell: bash

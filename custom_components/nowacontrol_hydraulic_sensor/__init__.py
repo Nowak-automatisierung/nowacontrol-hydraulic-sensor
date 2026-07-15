@@ -177,7 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             DOMAIN,
             ISSUE_QUIRK_MISSING,
-            is_fixable=True,
+            is_fixable=False,
             severity=ir.IssueSeverity.WARNING,
             translation_key=ISSUE_QUIRK_MISSING,
             learn_more_url="https://www.home-assistant.io/integrations/zha/",
