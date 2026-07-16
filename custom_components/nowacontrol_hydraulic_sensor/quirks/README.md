@@ -1,4 +1,4 @@
-Copy [nowacontrol_hydraulic_sensor_v1.py](/C:/Users/mnowak/Work/10-products/nowacontrol-hydraulic-sensor/custom_components/nowacontrol_hydraulic_sensor/quirks/nowacontrol_hydraulic_sensor_v1.py) to Home Assistant's custom quirks path, for example `/config/custom_zha_quirks/`.
+Copy [nowacontrol_hydraulic_sensor_v1.py](./nowacontrol_hydraulic_sensor_v1.py) to Home Assistant's custom quirks path, for example `/config/custom_zha_quirks/`.
 
 Enable it in `configuration.yaml`:
 
