@@ -39,14 +39,21 @@ zha:
 ### 5. Home Assistant neu starten
 
 ### 6. Quirk-Status im UI pruefen
-- Wenn Auto-Install aktiv ist, installiert die Integration den ZHA-Quirk selbst.
-- Wenn ein Repair-Hinweis erscheint, diesen bestaetigen.
-- Services bleiben nur als Fallback fuer Support/Wartung bestehen.
+- Der Status ist read-only. Die Integration installiert, ueberschreibt oder
+  entfernt keine Quirk-Datei.
+- Es gibt keinen installierenden Service und keinen installierenden Repair-Flow.
+- Fehlt der Quirk, hier stoppen. Der Dateiwriter ist deaktiviert; eine
+  Bereitstellung erfordert eine separate zukuenftige Security- und
+  Commissioning-Freigabe. Dieses Runbook definiert dafuer kein Verfahren.
 
-### 7. Home Assistant erneut neu starten
+### 7. Bereits bereitgestellten Quirk getrennt freigeben
+Ein bereits unabhaengig bereitgestellter Quirk darf erst nach dessen eigener
+Freigabe durch einen Neustart aktiviert werden.
 
 ### 8. Sensor in ZHA loeschen und neu anlernen
-Das ist wichtig, damit ZHA den Hersteller-Cluster `0xFC10` und den Delta-T-Endpoint neu interviewt.
+Dieser Schritt ist nur nach der getrennten Freigabe eines bereits vorhandenen
+Quirks vorgesehen, damit ZHA den Hersteller-Cluster `0xFC10` und den
+Delta-T-Endpoint neu interviewt.
 
 ## Pfad B - Lokaler Fallback
 Falls HACS in einer Zielumgebung nicht verfuegbar ist, bleibt der lokale Installationspfad ueber `/config/custom_components/` als Fallback erhalten.

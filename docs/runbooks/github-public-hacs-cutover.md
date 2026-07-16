@@ -77,9 +77,13 @@ zha:
 ```
 
 8. Home Assistant neu starten.
-9. Service `nowacontrol_hydraulic_sensor.install_zha_quirk` ausfuehren.
-10. Home Assistant erneut neu starten.
-11. Sensor in ZHA neu anlernen.
+9. Den read-only Quirk-Status pruefen. Die Integration installiert, ueberschreibt
+   oder entfernt keine Quirk-Datei.
+10. Fehlt der Quirk, hier stoppen. Der Dateiwriter ist deaktiviert; eine
+    Bereitstellung erfordert eine separate zukuenftige Security- und
+    Commissioning-Freigabe. Dieses Runbook definiert dafuer kein Verfahren.
+11. Einen bereits unabhaengig bereitgestellten Quirk nur nach dessen eigener
+    Freigabe durch Neustart und erneutes Anlernen aktivieren.
 
 ## Mehrere Sensoren sauber anlegen
 - Jeder physische Sensor wird als eigenes Zigbee-Geraet angelernt.

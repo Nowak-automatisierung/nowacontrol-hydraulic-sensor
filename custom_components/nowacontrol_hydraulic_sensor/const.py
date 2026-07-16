@@ -16,5 +16,9 @@ CONF_SHOW_NOTIFICATIONS = "show_notifications"
 ISSUE_ZHA_PATH = "zha_custom_quirks_path"
 ISSUE_QUIRK_MISSING = "quirk_not_installed"
 ISSUE_RESTART_REQUIRED = "restart_required"
-DEFAULT_AUTO_INSTALL_QUIRK = True
+FILE_WRITES_DISABLED_MESSAGE = (
+    "nowaControl product file writes and caller-controlled path writes are disabled; "
+    "security commissioning is required."
+)
+DEFAULT_AUTO_INSTALL_QUIRK = False
 DEFAULT_SHOW_NOTIFICATIONS = True
