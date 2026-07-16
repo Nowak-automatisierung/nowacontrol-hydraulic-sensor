@@ -55,6 +55,12 @@ Neu angelegt fuer den professionellen Finalpfad:
 
 Die frueheren Claude-spezifischen Workspace-Dateien wurden aus dem produktiven Pfad entfernt. `CODEX.md` ist jetzt die bevorzugte Einstiegspunkt-Dokumentation.
 
+## Firmware-Governance
+
+- [Provenienzbaseline](docs/governance/hydraulic-firmware-provenance.yaml)
+- [Firmware- und Produktinvarianten](docs/governance/hydraulic-firmware-invariants.md)
+- [Reproduzierbarer Buildvertrag](docs/governance/hydraulic-reproducible-build-contract.md)
+
 ## Repository-Struktur
 
 ```text
@@ -68,4 +74,3 @@ infra/                 Infrastruktur und Betriebsartefakte
 marketing-site/        Marketing-/Web-Praesenz
 sensor-platform/       Geraete-, Firmware-, Hardware- und Testbasis
 scripts/               Flash-, Service- und Betriebs-Skripte
-
