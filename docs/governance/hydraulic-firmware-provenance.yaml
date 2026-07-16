@@ -9,6 +9,12 @@ authoritative_sdk_version: unresolved
 observed_sdk_versions:
   - "2025.12.1"
   - "2025.12.2"
+sdk_authority_entry_condition:
+  approved_owner_decision: required
+  approved_primary_evidence: required
+  combination: all
+  owner_decision_alone: insufficient
+  authoritative_sdk_version: unresolved
 generated_tree_authority: forensic_reference
 semantic_compatibility_requirement: mandatory
 byte_identity_status: not_demonstrable
@@ -187,7 +193,7 @@ known_semantic_conflicts:
 
 required_follow_up_gates:
   - id: sdk_authority
-    requirement: "Approve exactly one authoritative SDK version with primary evidence."
+    requirement: "Select exactly one authoritative SDK version through an approved owner decision and approved primary evidence; both are required and an owner decision alone is insufficient."
   - id: sdk_content_lock
     requirement: "Record checksums for the complete approved SDK content."
   - id: toolchain_lock

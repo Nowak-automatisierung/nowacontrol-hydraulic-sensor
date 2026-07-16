@@ -21,8 +21,17 @@ authoritative future product definition.
 
 ## Binding owner decisions
 
-- `AUTHORITATIVE_SDK_VERSION = UNRESOLVED` (`REQUIRED`). Neither `2025.12.1`
-  nor `2025.12.2` is selected by this baseline.
+- `AUTHORITATIVE_SDK_VERSION = UNRESOLVED` (`REQUIRED`). The authoritative SDK
+  version must be selected by an approved owner decision and supported by
+  approved primary evidence; both conditions are jointly required. An owner
+  decision alone, conflict resolution alone, repository history alone, the
+  legacy generated tree alone, Mannheim test evidence alone, live-system state
+  alone, inference, or an SDK version number alone are insufficient. Approved
+  primary evidence must be a traceable, approved vendor or toolchain source
+  unambiguously tied to the selected SDK version, verifiable and
+  version-controlled; a local installation, filename, or derived version
+  statement is insufficient. Neither `2025.12.1` nor `2025.12.2` is selected by
+  this baseline.
 - `LEGACY_GENERATED_TREE = FORENSIC_REFERENCE` (`REQUIRED`). Historical
   generator outputs remain unchanged and are not automatically the future
   product contract.

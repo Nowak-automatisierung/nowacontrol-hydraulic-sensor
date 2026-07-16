@@ -42,6 +42,207 @@ def _assert_scalar(
     test_case.assertRegex(text, pattern, f"missing {key}: {expected}")
 
 
+def _strip_markdown_comments(markdown: str) -> str:
+    return re.sub(r"<!--.*?-->", "", markdown, flags=re.DOTALL)
+
+
+def _normative_markdown_section(markdown: str, title: str) -> str:
+    """Return direct content of exactly one level-two normative section."""
+
+    uncommented = _strip_markdown_comments(markdown)
+    heading_pattern = re.compile(r"(?m)^(#{1,6})\s+(.+?)\s*#*\s*$")
+    headings = list(heading_pattern.finditer(uncommented))
+    matches = [
+        (index, heading)
+        for index, heading in enumerate(headings)
+        if len(heading.group(1)) == 2
+        and heading.group(2).strip().casefold() == title.casefold()
+    ]
+    if len(matches) != 1:
+        raise AssertionError(f"expected exactly one normative section: {title}")
+
+    index, heading = matches[0]
+    end = len(uncommented)
+    for following in headings[index + 1 :]:
+        if len(following.group(1)) <= 2:
+            end = following.start()
+            break
+    section = uncommented[heading.end() : end]
+
+    nested_heading = heading_pattern.search(section)
+    if nested_heading:
+        section = section[: nested_heading.start()]
+    return section.strip()
+
+
+def _ordered_list_items(section: str) -> list[str]:
+    item_pattern = re.compile(
+        r"(?ms)^\s*\d+[.)]\s+(.*?)(?=^\s*\d+[.)]\s+|\Z)"
+    )
+    return [
+        re.sub(r"\s+", " ", item.group(1)).strip()
+        for item in item_pattern.finditer(section)
+    ]
+
+
+def _assert_sdk_authority_policy(
+    test_case: unittest.TestCase, section: str, *, document: str
+) -> None:
+    items = _ordered_list_items(section)
+    if items:
+        candidates = [
+            item for item in items if "authoritative sdk version" in item.casefold()
+        ]
+    else:
+        normalized_section = re.sub(r"\s+", " ", section).strip()
+        candidates = (
+            [normalized_section]
+            if "authoritative sdk version" in normalized_section.casefold()
+            else []
+        )
+    test_case.assertEqual(
+        len(candidates), 1, f"{document}: exactly one SDK authority condition required"
+    )
+    policy = candidates[0].casefold()
+
+    policy_sentences = [
+        sentence.strip()
+        for sentence in re.split(r"[.!?](?:\s+|$)", policy)
+        if sentence.strip()
+    ]
+    combined_conditions = [
+        sentence
+        for sentence in policy_sentences
+        if "authoritative sdk version" in sentence
+        and "approved owner decision" in sentence
+        and "approved primary evidence" in sentence
+        and re.search(r"\b(?:must|required|requires)\b", sentence)
+        and (
+            " and " in sentence
+            or "together with" in sentence
+            or "both" in sentence
+        )
+    ]
+    test_case.assertEqual(
+        len(combined_conditions),
+        1,
+        f"{document}: owner decision and primary evidence must be one binding condition",
+    )
+    test_case.assertNotRegex(
+        combined_conditions[0],
+        r"\b(?:must not|not required|need not|optional|either)\b",
+        f"{document}: combined SDK condition is negated or weakened",
+    )
+    for contradiction in (
+        "not binding",
+        "not mandatory",
+        "not necessary",
+        "not needed",
+        "not required",
+        "need not",
+        "may be omitted",
+        "can be omitted",
+        "non-binding",
+        "illustrative",
+        "optional",
+        "owner decision is sufficient",
+        "owner decision alone is sufficient",
+        "without approved primary evidence",
+    ):
+        test_case.assertNotIn(
+            contradiction, policy, f"{document}: contradictory SDK condition"
+        )
+
+    for insufficient_basis in (
+        "owner decision alone",
+        "conflict resolution alone",
+        "repository history alone",
+        "legacy generated tree alone",
+        "mannheim test evidence alone",
+        "live-system state alone",
+        "inference",
+        "sdk version number alone",
+    ):
+        test_case.assertIn(
+            insufficient_basis, policy, f"{document}: missing insufficient basis"
+        )
+    test_case.assertTrue(
+        any(
+            "owner decision alone" in sentence and "insufficient" in sentence
+            for sentence in policy_sentences
+        ),
+        f"{document}: owner decision alone must be explicitly insufficient",
+    )
+    for evidence_requirement in (
+        "traceable, approved vendor or toolchain source",
+        "unambiguously tied to the selected sdk version",
+        "verifiable and version-controlled",
+        "local installation",
+        "filename",
+        "derived version statement",
+    ):
+        test_case.assertIn(
+            evidence_requirement, policy, f"{document}: incomplete evidence policy"
+        )
+
+
+def _assert_build_contract_sdk_entry(
+    test_case: unittest.TestCase, markdown: str
+) -> None:
+    entry_conditions = _normative_markdown_section(markdown, "Entry conditions")
+    _assert_sdk_authority_policy(
+        test_case, entry_conditions, document="build contract Entry conditions"
+    )
+
+
+def _yaml_mapping(text: str, key: str) -> dict[str, str]:
+    match = re.search(
+        rf"(?m)^{re.escape(key)}:\s*\n(?P<body>(?:^[ \t]+[^\n]*\n?)*)",
+        text,
+    )
+    if not match:
+        raise AssertionError(f"missing YAML mapping: {key}")
+    mapping: dict[str, str] = {}
+    for line in match.group("body").splitlines():
+        scalar = re.fullmatch(
+            r"\s+([a-z][a-z0-9_]*):\s*['\"]?([^'\"]+?)['\"]?\s*", line
+        )
+        if scalar:
+            mapping[scalar.group(1)] = scalar.group(2)
+    return mapping
+
+
+def _yaml_list_item(text: str, item_id: str) -> dict[str, str]:
+    match = re.search(
+        rf"(?m)^  - id:\s*{re.escape(item_id)}\s*\n"
+        rf"(?P<body>(?:^    [^\n]*\n?)*)",
+        text,
+    )
+    if not match:
+        raise AssertionError(f"missing YAML list item: {item_id}")
+    item: dict[str, str] = {"id": item_id}
+    for line in match.group("body").splitlines():
+        scalar = re.fullmatch(
+            r"\s+([a-z][a-z0-9_]*):\s*['\"]?([^'\"]+?)['\"]?\s*", line
+        )
+        if scalar:
+            item[scalar.group(1)] = scalar.group(2)
+    return item
+
+
+VALID_SDK_ENTRY = """## Entry conditions
+
+1. The authoritative SDK version must be selected by an approved owner decision
+   and supported by approved primary evidence. Approved primary evidence is a
+   traceable, approved vendor or toolchain source unambiguously tied to the
+   selected SDK version, verifiable and version-controlled. An owner decision
+   alone, conflict resolution alone, repository history alone, the legacy
+   generated tree alone, Mannheim test evidence alone, live-system state alone,
+   inference, or an SDK version number alone is insufficient. A local
+   installation, filename, or derived version statement is also insufficient.
+"""
+
+
 class HydBaseline01BToolchainLockTests(unittest.TestCase):
     def test_provenance_files_exist_with_locked_sha256(self) -> None:
         for relative_path, expected_hash in PROVENANCE_FILES.items():
@@ -173,34 +374,124 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
     def test_authoritative_sdk_requires_owner_decision_and_primary_evidence(
         self,
     ) -> None:
-        contract = re.sub(r"\s+", " ", _read(BUILD_CONTRACT)).lower()
-        self.assertRegex(
-            contract,
-            r"authoritative sdk version must be selected by an approved owner "
-            r"decision and supported by approved primary evidence",
+        _assert_build_contract_sdk_entry(self, _read(BUILD_CONTRACT))
+
+    def test_sdk_entry_condition_guard_rejects_non_normative_mutations(
+        self,
+    ) -> None:
+        valid_body = VALID_SDK_ENTRY.removeprefix("## Entry conditions\n")
+        invalid_mutations = {
+            "comment_only": (
+                "# Contract\n\n<!--\n" + VALID_SDK_ENTRY + "\n-->\n\n"
+                "## Entry conditions\n\n1. SDK selection remains unresolved.\n"
+            ),
+            "appendix_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. SDK selection remains unresolved.\n\n## Appendix\n\n"
+                + valid_body
+            ),
+            "negated": VALID_SDK_ENTRY
+            + "\nThis requirement is illustrative and is not binding.\n",
+            "owner_decision_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. The authoritative SDK version requires an approved owner "
+                "decision alone.\n"
+            ),
+            "primary_evidence_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. The authoritative SDK version requires approved primary "
+                "evidence alone.\n"
+            ),
+            "rationale_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. SDK selection remains unresolved.\n\n## Rationale\n\n"
+                + valid_body
+            ),
+            "example_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. SDK selection remains unresolved.\n\n## Example\n\n"
+                + valid_body
+            ),
+            "notes_only": (
+                "# Contract\n\n## Entry conditions\n\n"
+                "1. SDK selection remains unresolved.\n\n### Notes\n\n"
+                + valid_body
+            ),
+        }
+        for mutation, document in invalid_mutations.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _assert_build_contract_sdk_entry(self, document)
+
+        _assert_build_contract_sdk_entry(self, VALID_SDK_ENTRY)
+        reordered_and_rewrapped = """# Contract
+
+## Entry conditions
+
+1. Approved primary evidence, together with an approved owner decision, is
+   required to select the authoritative SDK version. A local installation,
+   filename, or derived version statement is insufficient. An SDK version number
+   alone, inference, live-system state alone, Mannheim test evidence alone, the
+   legacy generated tree alone, repository history alone, conflict resolution
+   alone, and an owner decision alone are insufficient. The evidence is
+   verifiable and version-controlled, unambiguously tied to the selected SDK
+   version, and comes from a traceable, approved vendor or toolchain source.
+"""
+        _assert_build_contract_sdk_entry(self, reordered_and_rewrapped)
+
+    def test_sdk_authority_entry_condition_is_consistent_across_documents(
+        self,
+    ) -> None:
+        contract = _read(BUILD_CONTRACT)
+        invariants = _read(INVARIANTS_DOCUMENT)
+        manifest = _read(PROVENANCE_MANIFEST)
+        _assert_build_contract_sdk_entry(self, contract)
+        invariant_policy = _normative_markdown_section(
+            invariants, "Binding owner decisions"
         )
-
-        for insufficient_basis in (
-            "owner decision alone",
-            "conflict resolution alone",
-            "repository history alone",
-            "legacy generated tree alone",
-            "mannheim test evidence alone",
-            "live-system state alone",
-            "inference",
-            "sdk version number alone",
+        _assert_sdk_authority_policy(
+            self, invariant_policy, document="firmware invariants"
+        )
+        self.assertEqual(
+            _yaml_mapping(manifest, "sdk_authority_entry_condition"),
+            {
+                "approved_owner_decision": "required",
+                "approved_primary_evidence": "required",
+                "combination": "all",
+                "owner_decision_alone": "insufficient",
+                "authoritative_sdk_version": "unresolved",
+            },
+        )
+        manifest_requirement = _yaml_list_item(manifest, "sdk_authority")[
+            "requirement"
+        ].casefold()
+        for required_text in (
+            "approved owner decision",
+            "approved primary evidence",
+            "both are required",
+            "owner decision alone is insufficient",
         ):
-            self.assertIn(insufficient_basis, contract)
+            self.assertIn(required_text, manifest_requirement)
+        for document in (contract, invariants):
+            self.assertIn("AUTHORITATIVE_SDK_VERSION = UNRESOLVED", document)
 
-        for primary_evidence_requirement in (
-            "traceable, approved vendor or toolchain source",
-            "unambiguously tied to the selected sdk version",
-            "verifiable and version-controlled",
-            "local installation",
-            "filename",
-            "derived version statement",
+    def test_documentation_rollback_covers_complete_pr_and_squash_merge(
+        self,
+    ) -> None:
+        contract = _read(BUILD_CONTRACT)
+        for required_text in (
+            "Before merge",
+            "Finding correction commit",
+            "fdd493f0f9e049ad4411b90fcd11e625756e1400",
+            "001aad1d38ad2f39f00253a2a9a36208bf3f96e7",
+            "reverse order",
+            "After a squash merge",
+            "resulting squash-merge commit",
         ):
-            self.assertIn(primary_evidence_requirement, contract)
+            self.assertIn(required_text, contract)
+        self.assertNotIn(
+            "requires only reverting its documentation/test commit", contract
+        )
 
     def test_location_and_platform_boundaries_are_explicit_and_portable(self) -> None:
         governance_text = "\n".join(

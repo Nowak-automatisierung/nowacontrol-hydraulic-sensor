@@ -142,6 +142,28 @@ signing, OTA, rollback, and consumer-contract results. Repository transfer and
 stable release remain separate blocked decisions until that record passes an
 independent review.
 
-Rejecting this documentation requires only reverting its documentation/test
-commit. It has no firmware, generator, device, RF, Home Assistant runtime, or
-deployment rollback action because none is authorized or performed here.
+## Documentation rollback
+
+### Before merge
+
+Rollback of this unmerged PR means closing or reverting the entire PR. If the
+commits are reverted individually, they must be reverted in this reverse order:
+
+1. Finding correction commit (`fix: close HYD-BASELINE-01B re-audit findings`).
+2. `fdd493f0f9e049ad4411b90fcd11e625756e1400`.
+3. `001aad1d38ad2f39f00253a2a9a36208bf3f96e7`.
+
+Reverting only `001aad1d38ad2f39f00253a2a9a36208bf3f96e7` is not a complete
+rollback. A complete pre-merge rollback must restore the tree at
+`9a3e88454fb95ce600e2fbb1049718e137e6b35b`.
+
+### After a squash merge
+
+Record the actual resulting squash-merge commit created on `main`, then revert
+that commit. Do not use an older feature commit as the sole post-merge rollback
+and do not invent a future squash SHA. If the selected merge strategy creates a
+merge commit instead, record and revert the actual resulting merge commit.
+
+This documentation has no firmware, generator, device, RF, Home Assistant
+runtime, or deployment rollback action because none is authorized or performed
+here.
