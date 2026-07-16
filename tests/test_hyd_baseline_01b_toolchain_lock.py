@@ -170,6 +170,38 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         self.assertIn("NO GENERATOR RUN", contract)
         self.assertIn("NO FIRMWARE BUILD", contract)
 
+    def test_authoritative_sdk_requires_owner_decision_and_primary_evidence(
+        self,
+    ) -> None:
+        contract = re.sub(r"\s+", " ", _read(BUILD_CONTRACT)).lower()
+        self.assertRegex(
+            contract,
+            r"authoritative sdk version must be selected by an approved owner "
+            r"decision and supported by approved primary evidence",
+        )
+
+        for insufficient_basis in (
+            "owner decision alone",
+            "conflict resolution alone",
+            "repository history alone",
+            "legacy generated tree alone",
+            "mannheim test evidence alone",
+            "live-system state alone",
+            "inference",
+            "sdk version number alone",
+        ):
+            self.assertIn(insufficient_basis, contract)
+
+        for primary_evidence_requirement in (
+            "traceable, approved vendor or toolchain source",
+            "unambiguously tied to the selected sdk version",
+            "verifiable and version-controlled",
+            "local installation",
+            "filename",
+            "derived version statement",
+        ):
+            self.assertIn(primary_evidence_requirement, contract)
+
     def test_location_and_platform_boundaries_are_explicit_and_portable(self) -> None:
         governance_text = "\n".join(
             _read(path)

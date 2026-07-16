@@ -12,8 +12,17 @@ artifact publication, no release, and no deployment.
 All entry conditions are mandatory and must be version-controlled before the
 first authorized tool invocation:
 
-1. One authoritative SDK version selected by owner decision. The unresolved
-   `2025.12.1`/`2025.12.2` conflict must be closed without inference.
+1. The authoritative SDK version must be selected by an approved owner decision
+   and supported by approved primary evidence, without inference from repository
+   history, generated output, test-site state, or live-system state. Approved
+   primary evidence must be a traceable, approved vendor or toolchain source
+   unambiguously tied to the selected SDK version, verifiable and
+   version-controlled—not merely a local installation, filename, or derived
+   version statement. The following are insufficient: an owner decision alone;
+   conflict resolution alone; repository history alone; the legacy generated
+   tree alone; Mannheim test evidence alone; live-system state alone; inference;
+   or an SDK version number alone. The unresolved `2025.12.1`/`2025.12.2`
+   conflict remains open until both requirements are satisfied.
 2. SDK content checksums covering every consumed SDK file, package, template,
    schema, and binary—not merely a marketing version string.
 3. Exact pins for Simplicity Studio, SLC, ZAP, CMake, compiler, linker,
