@@ -8,6 +8,9 @@ on:
       - "tests/**"
       - "hacs.json"
       - ".github/workflows/validate-homeassistant.yml"
+      - "docs/runbooks/github-public-hacs-cutover.md"
+      - "docs/runbooks/homeassistant-hacs-rollout.md"
+      - "docs/runbooks/homeassistant-instance-setup.md"
   push:
     branches:
       - main
@@ -17,6 +20,9 @@ on:
       - "tests/**"
       - "hacs.json"
       - ".github/workflows/validate-homeassistant.yml"
+      - "docs/runbooks/github-public-hacs-cutover.md"
+      - "docs/runbooks/homeassistant-hacs-rollout.md"
+      - "docs/runbooks/homeassistant-instance-setup.md"
   workflow_dispatch:
 
 permissions:
