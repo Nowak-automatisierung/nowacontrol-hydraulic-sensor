@@ -32,6 +32,23 @@ SDK_AUTHORITY_CONTRACT = {
     "authoritative_sdk_version": "UNRESOLVED",
 }
 
+SDK_AUTHORITY_STRUCTURE_FINGERPRINTS = {
+    "build contract": frozenset(
+        {
+            "0eb6dfc15bd5b91dab00bf3b134e5a3fdb26a431616e127f44759f51ad4ad0f6",
+            "4017655132d13504b6b24f1f65f5823c1843af38374aaf73acf2eca8f665bd4d",
+            "707f5606ddd8add3b6f7fc6b575389dbb6f471d19cbe692a6e23e3a3d780b13c",
+            "8285fd22543bab44ce2110109be9ee27ccf27f2743af98a755e43454eaa94a66",
+        }
+    ),
+    "firmware invariants": frozenset(
+        {
+            "28d5096ca78e1d46576e175c197ed121beffcd9a8763696f0a4c7d2025163caa",
+            "da42bded43a331ef4917ab2a777871db0916f545a1f058cdaa3f1f720e1b4ecb",
+        }
+    ),
+}
+
 RUBY_YAML_LOADER = r"""
 input = STDIN.read
 stream = Psych.parse_stream(input)
@@ -779,143 +796,52 @@ def _assert_no_additional_sdk_authority(
     allowed_policy: str,
     document: str,
 ) -> None:
-    """Classify every visible normative authority statement and fail closed."""
+    """Match the complete visible normative structure against an approved lock."""
+
+    fingerprint = _sdk_authority_structure_fingerprint(
+        visible_document,
+        allowed_policy=allowed_policy,
+    )
+    test_case.assertIn(
+        fingerprint,
+        SDK_AUTHORITY_STRUCTURE_FINGERPRINTS[document],
+        f"{document}: visible normative structure changed outside the canonical "
+        "SDK authority policy",
+    )
+
+
+def _sdk_authority_structure_fingerprint(
+    visible_document: str,
+    *,
+    allowed_policy: str,
+) -> str:
+    """Hash every visible normative record except the validated policy block."""
 
     normalized_policy = _normalized_markdown_statement(allowed_policy)
-    basis_patterns = {
-        "owner": (
-            r"\b(?:owner|proprietor|maintainer|custodian)\b|"
-            r"\bsign[ -]?off\b|\bowner (?:decision|consent|approval)\b"
-        ),
-        "primary_evidence": (
-            r"\b(?:approved )?primary evidence\b|"
-            r"\b(?:source|vendor) (?:proof|evidence)\b|\bprovenance\b"
-        ),
-        "authority_record": r"\bauthority (?:basis|evidence|record|source)\b",
-        "history": (
-            r"\bhistory(?=\s*[:=])|\brepository (?:history|record)\b"
-        ),
-        "legacy_tree": (
-            r"\blegacy (?:generated )?(?:tree|output)\b|"
-            r"\bgenerated tree\b"
-        ),
-        "mannheim": r"\bmannheim\b",
-        "live_state": r"\blive[ -]system\b|\blive state\b|\bruntime state\b",
-        "local_state": (
-            r"\blocal installation\b|\binstalled toolchain\b|"
-            r"\bambient sdk\b|\bworkstation installation\b"
-        ),
-        "derived_value": (
-            r"\bfile[ -]?name\b|\bderived version\b|"
-            r"\brecorded version\b|\bversion number\b|\binference\b|"
-            r"\bsdk version\b"
-        ),
-    }
-    positive_pattern = re.compile(
-        r"\b(?:approv\w*|accept\w*|authori[sz]\w*|authorit\w*|valid|binding|"
-        r"select\w*|choos\w*|chosen|proceed\w*|sufficien\w*|"
-        r"permit\w*|allow\w*|govern\w*|control\w*|determin\w*|"
-        r"establish\w*|replace\w*)\b"
-    )
-    weakening_pattern = re.compile(
-        r"\b(?:alternative(?:ly)?|optional|either|or|one of|only one|"
-        r"alone|by itself|without|may|can|could|omitt\w*|waiv\w*|"
-        r"need not|not required|not necessary|not needed)\b"
-    )
-    safe_denial_pattern = re.compile(
-        r"\b(?:insufficient|prohibited|unresolved|blocked|unknown|unapproved|"
-        r"rejected|pending|forensic reference|test evidence only|"
-        r"evidence only|not demonstrable|descriptive only|remains inert|"
-        r"incapable)\b|"
-        r"\b(?:must not|may not|cannot|does not|do not|never)\b.{0,100}"
-        r"\b(?:authori[sz]\w*|select\w*|approv\w*|establish\w*|replace\w*|"
-        r"govern\w*|control\w*|define\w*|supply\w*|grant\w*)\b|"
-        r"\bnot\b.{0,50}\b(?:authoritative|authority|selected)\b|"
-        r"\bneither\b.{0,100}\bselected\b|"
-        r"\bno (?:ambient sdk|live system source of truth)\b"
-    )
-
-    def has_unnegated_positive(statement: str) -> bool:
-        for match in positive_pattern.finditer(statement):
-            prefix = statement[max(0, match.start() - 100) : match.start()]
-            if not re.search(
-                r"\b(?:must not|may not|cannot|does not|do not|never|neither|"
-                r"not|incapable)"
-                r"\b.{0,80}$",
-                prefix,
-            ):
-                return True
-        return False
-
+    records: list[str] = []
     for context, block, statement in _normative_markdown_statements(
         visible_document
     ):
         normalized_block = _normalized_markdown_statement(block)
         if normalized_block == normalized_policy:
             continue
-        normalized_statement = _normalized_markdown_statement(statement)
-        if normalized_statement == "binding owner decisions":
-            continue
-        normalized_context = _normalized_markdown_statement(context)
-        scoped_text = f"{normalized_context} {normalized_statement}".strip()
-        matched_bases = {
-            name
-            for name, pattern in basis_patterns.items()
-            if re.search(pattern, normalized_statement)
-        }
-        sdk_scope = bool(re.search(r"\b(?:sdk|toolchain)\b", scoped_text)) and bool(
-            re.search(
-                r"\b(?:authorit\w*|select\w*|choice|version|decision|approval|"
-                r"govern\w*|control\w*|establish\w*)\b",
-                scoped_text,
+        records.append(
+            "\x1f".join(
+                (
+                    _normalized_markdown_statement(context),
+                    normalized_block,
+                    _normalized_markdown_statement(statement),
+                )
             )
         )
-        version_authority_scope = bool(
-            re.search(r"\bversion\b(?!-controlled)", normalized_statement)
-            and re.search(
-                r"\b(?:approv\w*|accept\w*|authorit\w*|sufficien\w*|"
-                r"selected)\b",
-                normalized_statement,
-            )
-        )
-        bare_authority_value = bool(
-            re.search(
-                r"(?:^| > )(?:entry conditions|binding owner decisions)$",
-                normalized_context,
-            )
-            and re.fullmatch(r"\S+", normalized_statement)
-            and any(character.isalnum() for character in normalized_statement)
-        )
-        authority_signal = bool(
-            positive_pattern.search(normalized_statement)
-            or weakening_pattern.search(normalized_statement)
-        )
-        record_like = bool(matched_bases) and bool(
-            re.search(r"[:=]", normalized_statement)
-            or (sdk_scope and "|" in block)
-        )
-        if not (
-            (
-                matched_bases
-                or sdk_scope
-                or version_authority_scope
-                or bare_authority_value
-            )
-            and (authority_signal or record_like or bare_authority_value)
-        ):
-            continue
-        safely_denied = safe_denial_pattern.search(normalized_statement)
-        test_case.assertTrue(
-            safely_denied and not has_unnegated_positive(normalized_statement),
-            f"{document}: additional visible SDK authority declaration "
-            f"in [{context or '<document>'}]: {statement}",
-        )
+    projection = "\n".join(records).encode("utf-8")
+    return hashlib.sha256(projection).hexdigest()
 
 
 def _assert_build_contract_sdk_entry(
     test_case: unittest.TestCase, markdown: str
 ) -> None:
-    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
+    visible = _strip_non_visible_markdown(markdown)
     visible, start, end = _markdown_section_bounds(
         visible,
         "Entry conditions",
@@ -940,7 +866,7 @@ def _assert_build_contract_sdk_entry(
 def _assert_firmware_invariants_sdk_entry(
     test_case: unittest.TestCase, markdown: str
 ) -> None:
-    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
+    visible = _strip_non_visible_markdown(markdown)
     visible, start, end = _markdown_section_bounds(
         visible,
         "Binding owner decisions",
@@ -1751,12 +1677,118 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
             for addition in additions:
                 validator(base + "\n" + addition)
 
-    def test_sdk_authority_guard_excludes_inline_code_from_normative_text(self) -> None:
-        _assert_build_contract_sdk_entry(
-            self,
-            VALID_SDK_ENTRY
-            + "\n`SDK selection may proceed with an approved owner decision alone.`\n",
+    def test_sdk_authority_guard_rejects_all_visible_normative_surfaces_in_both_docs(
+        self,
+    ) -> None:
+        build_base = _read(BUILD_CONTRACT)
+        invariants_base = _read(INVARIANTS_DOCUMENT)
+        mutations = {
+            "visible_inline_code": (
+                "`SDK selection may proceed with an approved owner decision alone.`"
+            ),
+            "heading": "### Approved SDK: phoenix-rc7",
+            "subheading": (
+                "#### Toolchain selection\n\nUse SDK phoenix-rc7."
+            ),
+            "unordered_list": "- SDK: phoenix-rc7",
+            "ordered_list": "2. Adopt SDK phoenix-rc7.",
+            "table": (
+                "| SDK | Status |\n|---|---|\n| phoenix-rc7 | APPROVED |"
+            ),
+            "prose": "Use SDK phoenix-rc7.",
+            "sdk_record": "SDK: phoenix-rc7",
+            "toolchain_record": "Toolchain: phoenix-rc7",
+            "plain_version_record": "Version: 2025.12.1.",
+            "version_status_record": "2025.12.1: APPROVED.",
+            "pure_version_value": "2025.12.1",
+            "sdk_name": "Gecko SDK phoenix-rc7 is official.",
+            "unknown_positive_verb": "Adopt SDK phoenix-rc7.",
+            "unknown_positive_adjective": "SDK phoenix-rc7 is official.",
+            "unknown_positive_modality": "The SDK shall be phoenix-rc7.",
+            "chosen_sdk": "The chosen SDK is phoenix-rc7.",
+            "owner_only": "Owner decision alone authorizes SDK selection.",
+            "evidence_only": "Primary evidence alone authorizes SDK selection.",
+            "owner_optional": "Owner approval is optional for SDK selection.",
+            "evidence_optional": "Source proof is optional for SDK selection.",
+            "either_or": (
+                "Either owner sign-off or source proof may govern SDK selection."
+            ),
+            "explicit_or": "Owner approval OR source proof selects the SDK.",
+            "one_of": "One of owner approval and source proof selects the SDK.",
+            "history": "Repository history: APPROVED.",
+            "legacy_tree": "Legacy Generated Tree: APPROVED.",
+            "mannheim": "Mannheim: APPROVED.",
+            "live_system": "Live-System: APPROVED.",
+            "local_installation": "Local installation: APPROVED.",
+            "filename": "Filename: gecko-sdk.zip.",
+            "derived_version": "Derived version: 2025.12.1.",
+            "dispensable_evidence": "Source proof is dispensable.",
+        }
+
+        def build_placements(mutation: str) -> dict[str, str]:
+            return {
+                "before": build_base.replace(
+                    "## Entry conditions",
+                    mutation + "\n\n## Entry conditions",
+                    1,
+                ),
+                "inside": build_base.replace(
+                    "\n## Generation gate",
+                    "\n" + mutation + "\n\n## Generation gate",
+                    1,
+                ),
+                "after": build_base + "\n" + mutation + "\n",
+            }
+
+        def invariants_placements(mutation: str) -> dict[str, str]:
+            return {
+                "before": invariants_base.replace(
+                    "## Binding owner decisions",
+                    mutation + "\n\n## Binding owner decisions",
+                    1,
+                ),
+                "inside": invariants_base.replace(
+                    "\n## Hardware, clock, antenna, and RF invariants",
+                    "\n" + mutation
+                    + "\n\n## Hardware, clock, antenna, and RF invariants",
+                    1,
+                ),
+                "after": invariants_base + "\n" + mutation + "\n",
+            }
+
+        documents = {
+            "build_contract": (
+                build_placements,
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            "firmware_invariants": (
+                invariants_placements,
+                lambda markdown: _assert_firmware_invariants_sdk_entry(
+                    self, markdown
+                ),
+            ),
+        }
+        for mutation_name, mutation in mutations.items():
+            for document_name, (placements, validator) in documents.items():
+                for placement, document in placements(mutation).items():
+                    with self.subTest(
+                        mutation=mutation_name,
+                        document=document_name,
+                        placement=placement,
+                    ):
+                        with self.assertRaises(AssertionError):
+                            validator(document)
+
+    def test_sdk_authority_guard_rejects_visible_inline_code(self) -> None:
+        inline_override = (
+            "`SDK selection may proceed with an approved owner decision alone.`"
         )
+        build_contract = VALID_SDK_ENTRY + "\n" + inline_override + "\n"
+        invariants = _read(INVARIANTS_DOCUMENT) + "\n" + inline_override + "\n"
+        with self.assertRaises(AssertionError):
+            _assert_build_contract_sdk_entry(self, build_contract)
+        with self.assertRaises(AssertionError):
+            _assert_firmware_invariants_sdk_entry(self, invariants)
 
     def test_sdk_authority_contract_is_canonical_and_machine_readable(self) -> None:
         self.assertEqual(
