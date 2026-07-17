@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -30,6 +31,41 @@ SDK_AUTHORITY_CONTRACT = {
     "disjunctive_authority": "PROHIBITED",
     "authoritative_sdk_version": "UNRESOLVED",
 }
+
+RUBY_YAML_LOADER = r"""
+input = STDIN.read
+stream = Psych.parse_stream(input)
+raise "exactly one YAML document required" unless stream.children.length == 1
+
+validate = nil
+validate = lambda do |node|
+  case node
+  when Psych::Nodes::Mapping
+    keys = {}
+    node.children.each_slice(2) do |key, value|
+      raise "non-scalar YAML mapping key" unless key.is_a?(Psych::Nodes::Scalar)
+      signature = key.value
+      raise "duplicate YAML key: #{key.value}" if keys.key?(signature)
+      keys[signature] = true
+      validate.call(value)
+    end
+  when Psych::Nodes::Sequence, Psych::Nodes::Document, Psych::Nodes::Stream
+    node.children.each { |child| validate.call(child) }
+  when Psych::Nodes::Alias
+    raise "YAML aliases are prohibited"
+  end
+end
+
+validate.call(stream)
+value = YAML.safe_load(
+  input,
+  permitted_classes: [],
+  permitted_symbols: [],
+  aliases: false
+)
+raise "top-level YAML value must be a mapping" unless value.is_a?(Hash)
+STDOUT.write(JSON.generate(value))
+"""
 
 PROVENANCE_FILES = {
     Path(
@@ -146,45 +182,55 @@ def _strip_non_visible_markdown(
     return "".join(without_inline_code)
 
 
-def _normative_markdown_section(markdown: str, title: str) -> str:
-    """Return direct content of exactly one level-two normative section."""
+def _visible_markdown_headings(visible: str) -> list[tuple[int, int, int, str]]:
+    """Parse visible ATX and Setext headings with their document spans."""
+
+    headings: list[tuple[int, int, int, str]] = []
+    previous: tuple[int, str] | None = None
+    offset = 0
+    for raw_line in visible.splitlines(keepends=True):
+        body = raw_line.rstrip("\r\n")
+        atx = re.fullmatch(r" {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*", body)
+        if atx:
+            title = re.sub(r"[ \t]+#+[ \t]*$", "", atx.group(2) or "").strip()
+            headings.append((offset, offset + len(raw_line), len(atx.group(1)), title))
+            previous = None
+        else:
+            setext = re.fullmatch(r" {0,3}(=+|-+)[ \t]*", body)
+            if setext and previous is not None:
+                start, title = previous
+                headings.append(
+                    (
+                        start,
+                        offset + len(raw_line),
+                        1 if body.lstrip()[0] == "=" else 2,
+                        title.strip(),
+                    )
+                )
+                previous = None
+            elif (
+                body.strip()
+                and not body.startswith(("    ", "\t"))
+                and not re.match(r" {0,3}(?:\d+[.)]|[-+*])[ \t]+", body)
+            ):
+                previous = (offset, body)
+            else:
+                previous = None
+        offset += len(raw_line)
+    return headings
+
+
+def _markdown_section_bounds(
+    markdown: str, title: str, level: int, *, direct_only: bool
+) -> tuple[str, int, int]:
+    """Return visible Markdown and the structurally selected section bounds."""
 
     visible = _strip_non_visible_markdown(markdown)
-    heading_pattern = re.compile(r"(?m)^(#{1,6})\s+(.+?)\s*#*\s*$")
-    headings = list(heading_pattern.finditer(visible))
+    headings = _visible_markdown_headings(visible)
     matches = [
         (index, heading)
         for index, heading in enumerate(headings)
-        if len(heading.group(1)) == 2
-        and heading.group(2).strip().casefold() == title.casefold()
-    ]
-    if len(matches) != 1:
-        raise AssertionError(f"expected exactly one normative section: {title}")
-
-    index, heading = matches[0]
-    end = len(visible)
-    for following in headings[index + 1 :]:
-        if len(following.group(1)) <= 2:
-            end = following.start()
-            break
-    section = visible[heading.end() : end]
-    nested_heading = heading_pattern.search(section)
-    if nested_heading:
-        section = section[: nested_heading.start()]
-    return section.strip()
-
-
-def _markdown_section_at_level(markdown: str, title: str, level: int) -> str:
-    """Return one heading section, including its nested subsections."""
-
-    visible = _strip_non_visible_markdown(markdown)
-    heading_pattern = re.compile(r"(?m)^(#{1,6})\s+(.+?)\s*#*\s*$")
-    headings = list(heading_pattern.finditer(visible))
-    matches = [
-        (index, heading)
-        for index, heading in enumerate(headings)
-        if len(heading.group(1)) == level
-        and heading.group(2).strip().casefold() == title.casefold()
+        if heading[2] == level and heading[3].casefold() == title.casefold()
     ]
     if len(matches) != 1:
         raise AssertionError(f"expected exactly one section: {title}")
@@ -192,10 +238,28 @@ def _markdown_section_at_level(markdown: str, title: str, level: int) -> str:
     index, heading = matches[0]
     end = len(visible)
     for following in headings[index + 1 :]:
-        if len(following.group(1)) <= level:
-            end = following.start()
+        if direct_only or following[2] <= level:
+            end = following[0]
             break
-    return visible[heading.end() : end].strip()
+    return visible, heading[1], end
+
+
+def _normative_markdown_section(markdown: str, title: str) -> str:
+    """Return direct content of exactly one level-two normative section."""
+
+    visible, start, end = _markdown_section_bounds(
+        markdown, title, 2, direct_only=True
+    )
+    return visible[start:end].strip()
+
+
+def _markdown_section_at_level(markdown: str, title: str, level: int) -> str:
+    """Return one heading section, including its nested subsections."""
+
+    visible, start, end = _markdown_section_bounds(
+        markdown, title, level, direct_only=False
+    )
+    return visible[start:end].strip()
 
 
 def _repository_manifest(revision: str) -> tuple[int, str]:
@@ -397,20 +461,11 @@ def _assert_sdk_authority_policy(
     ):
         test_case.assertEqual(SDK_AUTHORITY_CONTRACT[prohibited_field], "PROHIBITED")
 
-    items = _ordered_list_items(section)
-    if items:
-        candidates = [
-            item
-            for item in items
-            if "authoritative sdk version" in item.casefold()
-        ]
-    else:
-        normalized_section = re.sub(r"\s+", " ", section).strip()
-        candidates = (
-            [normalized_section]
-            if "authoritative sdk version" in normalized_section.casefold()
-            else []
-        )
+    candidates = [
+        item
+        for item in _ordered_list_items(section)
+        if "authoritative sdk version" in item.casefold()
+    ]
     test_case.assertEqual(
         len(candidates), 1, f"{document}: exactly one SDK authority condition required"
     )
@@ -570,62 +625,79 @@ def _assert_sdk_authority_policy(
 
 def _assert_no_additional_sdk_authority(
     test_case: unittest.TestCase,
-    markdown: str,
+    normative_section: str,
+    outside_normative_section: str,
     *,
     allowed_policy: str,
     document: str,
 ) -> None:
-    """Reject every visible second SDK-authority declaration outside the policy."""
+    """Reject authority declarations not made by the one normative list item."""
 
-    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
-    normalized = re.sub(r"\s+", " ", visible).strip().casefold().replace("_", " ")
+    normalized_section = (
+        re.sub(r"\s+", " ", normative_section)
+        .strip()
+        .casefold()
+        .replace("_", " ")
+    )
     normalized_policy = allowed_policy.casefold().replace("_", " ")
-    if normalized_policy not in normalized:
-        raise AssertionError(f"{document}: canonical SDK policy is not visible")
-    remaining = normalized.replace(normalized_policy, " ", 1)
+    if normalized_policy not in normalized_section:
+        raise AssertionError(f"{document}: canonical SDK policy is not normative")
+    remaining_section = normalized_section.replace(normalized_policy, " ", 1)
+    normalized_outside = (
+        re.sub(r"\s+", " ", outside_normative_section)
+        .strip()
+        .casefold()
+        .replace("_", " ")
+    )
     statements = [
         statement.strip()
-        for statement in re.split(r"(?<=[.!?])\s+|\s*\|\s*", remaining)
+        for statement in re.split(
+            r"(?<=[.!?])\s+|\s*\|\s*",
+            remaining_section + " " + normalized_outside,
+        )
         if statement.strip()
     ]
     for statement in statements:
-        sdk_scope = "sdk" in statement and any(
+        basis_scope = any(
             marker in statement
             for marker in (
-                "authorit",
-                "select",
-                "approval",
-                "approved",
+                "owner",
                 "primary evidence",
-                "owner decision",
-                "proceed",
+                "authority",
+                "approval",
+                "sdk version",
+                "recorded version",
+                "repository history",
+                "generated tree",
+                "legacy tree",
+                "live system",
+                "live-system",
+                "mannheim",
+                "local installation",
             )
-        )
-        authority_term_scope = (
-            "owner decision" in statement or "primary evidence" in statement
-        ) and any(
-            marker in statement
-            for marker in (
-                "alone",
-                "alternative",
-                "optional",
-                "sufficient",
-                "not required",
-                "need not",
-                "one of",
-                "either",
-                " or ",
-            )
-        )
-        if not sdk_scope and not authority_term_scope:
-            continue
-        unresolved_only = "unresolved" in statement and not re.search(
-            r"\b(?:may|can|proceed|authoriz\w*|permit\w*|allow\w*|sufficient|"
-            r"optional|alternative|either)\b",
+        ) or bool(re.search(r"\b\d{4}\.\d{2}\.\d+\b", statement))
+        positive_authority = re.search(
+            r"\b(?:authorit\w*|select\w*|proceed\w*|sufficien\w*|"
+            r"permit\w*|allow\w*|accept\w*)\b",
             statement,
         )
-        test_case.assertTrue(
-            unresolved_only,
+        weakened_authority = re.search(
+            r"\b(?:alternative|optional|either|one of|only one|not required|"
+            r"need not)\b",
+            statement,
+        )
+        authority_claim = basis_scope and bool(
+            positive_authority or weakened_authority
+        )
+        if not authority_claim:
+            continue
+        safe_denial = re.search(
+            r"\b(?:insufficient|prohibited|unresolved|blocked|cannot|must not|"
+            r"not allowed|not sufficient|not authoritative)\b",
+            statement,
+        )
+        test_case.assertIsNotNone(
+            safe_denial,
             f"{document}: additional visible SDK authority declaration: {statement}",
         )
 
@@ -634,50 +706,72 @@ def _assert_build_contract_sdk_entry(
     test_case: unittest.TestCase, markdown: str
 ) -> None:
     visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
-    entry_conditions = _normative_markdown_section(visible, "Entry conditions")
+    visible, start, end = _markdown_section_bounds(
+        visible, "Entry conditions", 2, direct_only=True
+    )
+    entry_conditions = visible[start:end].strip("\r\n")
     policy = _assert_sdk_authority_policy(
         test_case, entry_conditions, document="build contract Entry conditions"
     )
     _assert_no_additional_sdk_authority(
         test_case,
-        visible,
+        entry_conditions,
+        visible[:start] + visible[end:],
         allowed_policy=policy,
         document="build contract",
     )
 
 
-def _yaml_mapping(text: str, key: str) -> dict[str, str]:
-    match = re.search(
-        rf"(?m)^{re.escape(key)}:\s*\n(?P<body>(?:^[ \t]+[^\n]*\n?)*)",
-        text,
+def _yaml_document(text: str) -> dict[str, object]:
+    """Fully parse one YAML mapping and reject duplicate mapping keys."""
+
+    result = subprocess.run(
+        ["ruby", "-ryaml", "-rjson", "-e", RUBY_YAML_LOADER],
+        input=text,
+        text=True,
+        capture_output=True,
     )
-    if not match:
+    if result.returncode != 0:
+        detail = result.stderr.strip().splitlines()
+        raise AssertionError(detail[0] if detail else "invalid YAML document")
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise AssertionError("YAML parser returned invalid JSON") from error
+    if not isinstance(parsed, dict):
+        raise AssertionError("top-level YAML value must be a mapping")
+    return parsed
+
+
+def _yaml_mapping(text: str, key: str) -> dict[str, str]:
+    value = _yaml_document(text).get(key)
+    if not isinstance(value, dict):
         raise AssertionError(f"missing YAML mapping: {key}")
-    mapping: dict[str, str] = {}
-    for line in match.group("body").splitlines():
-        scalar = re.fullmatch(
-            r"\s+([a-z][a-z0-9_]*):\s*['\"]?([^'\"]+?)['\"]?\s*", line
-        )
-        if scalar:
-            mapping[scalar.group(1)] = scalar.group(2)
-    return mapping
+    if not all(
+        isinstance(item_key, str) and isinstance(item, str)
+        for item_key, item in value.items()
+    ):
+        raise AssertionError(f"YAML mapping must contain string scalars: {key}")
+    return value
 
 
 def _yaml_list_item(text: str, item_id: str) -> dict[str, str]:
-    match = re.search(
-        rf"(?m)^  - id:\s*{re.escape(item_id)}\s*\n"
-        rf"(?P<body>(?:^    [^\n]*\n?)*)",
-        text,
-    )
-    if not match:
+    values = _yaml_document(text).get("required_follow_up_gates")
+    if not isinstance(values, list):
+        raise AssertionError("missing YAML list: required_follow_up_gates")
+    matches = [
+        item
+        for item in values
+        if isinstance(item, dict) and item.get("id") == item_id
+    ]
+    if len(matches) != 1:
         raise AssertionError(f"missing YAML list item: {item_id}")
-    item: dict[str, str] = {"id": item_id}
-    for line in match.group("body").splitlines():
-        scalar = re.fullmatch(
-            r"\s+([a-z][a-z0-9_]*):\s*['\"]?([^'\"]+?)['\"]?\s*", line
-        )
-        if scalar:
-            item[scalar.group(1)] = scalar.group(2)
+    item = matches[0]
+    if not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in item.items()
+    ):
+        raise AssertionError(f"YAML list item must contain string scalars: {item_id}")
     return item
 
 
@@ -946,6 +1040,51 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         )
         _assert_build_contract_sdk_entry(self, visible_plus_code)
         _assert_build_contract_sdk_entry(self, visible_plus_comment)
+
+    def test_sdk_entry_condition_guard_rejects_structural_authority_bypasses(
+        self,
+    ) -> None:
+        valid_body = VALID_SDK_ENTRY.removeprefix("## Entry conditions\n")
+        indented_code = "".join(
+            f"    {line}" if line.strip() else line
+            for line in valid_body.splitlines(keepends=True)
+        )
+        invalid_mutations = {
+            "indented_markdown_code_block": (
+                "# Contract\n\n## Entry conditions\n\n" + indented_code
+            ),
+            "html_comment_only": (
+                "# Contract\n\n<!--\n"
+                + VALID_SDK_ENTRY
+                + "-->\n\n## Entry conditions\n\n1. SDK selection remains unresolved.\n"
+            ),
+            "appendix_authority": VALID_SDK_ENTRY
+            + "\n## Appendix\n\nVersion 2025.12.1 is authoritative.\n",
+            "later_contradictory_section": VALID_SDK_ENTRY
+            + "\n## Later rule\n\nRepository history authorizes selection.\n",
+            "setext_appendix_authority": VALID_SDK_ENTRY
+            + "\nAppendix\n--------\n\nThe legacy tree authorizes selection.\n",
+            "additional_owner_only_list": VALID_SDK_ENTRY
+            + "\n2. The owner may select the version.\n",
+            "additional_optional_authority_list": VALID_SDK_ENTRY
+            + "\n2. Authority evidence is optional.\n",
+            "additional_version_only_list": VALID_SDK_ENTRY
+            + "\n2. Version 2025.12.1 is authoritative.\n",
+            "additional_history_list": VALID_SDK_ENTRY
+            + "\n2. Repository history authorizes selection.\n",
+            "additional_legacy_tree_list": VALID_SDK_ENTRY
+            + "\n2. The legacy tree authorizes selection.\n",
+            "additional_live_system_list": VALID_SDK_ENTRY
+            + "\n2. The live system authorizes selection.\n",
+            "additional_mannheim_list": VALID_SDK_ENTRY
+            + "\n2. Mannheim authorizes selection.\n",
+            "additional_local_installation_list": VALID_SDK_ENTRY
+            + "\n2. A local installation authorizes selection.\n",
+        }
+        for mutation, document in invalid_mutations.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _assert_build_contract_sdk_entry(self, document)
 
     def test_sdk_entry_condition_guard_accepts_combined_reordered_wrapping(
         self,
@@ -1234,6 +1373,27 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         )
         for document in (BUILD_CONTRACT, INVARIANTS_DOCUMENT):
             self.assertIn("sdk_authority_entry_condition", _read(document))
+
+    def test_yaml_guard_rejects_duplicate_keys_and_incomplete_parses(self) -> None:
+        manifest = _read(PROVENANCE_MANIFEST)
+        owner_entry = "  approved_owner_decision: REQUIRED\n"
+        self.assertIn(owner_entry, manifest)
+        invalid_manifests = {
+            "duplicate_sdk_authority_top_level": manifest
+            + "\nsdk_authority_entry_condition: {}\n",
+            "duplicate_tagged_sdk_authority_top_level": manifest
+            + "\n!!str sdk_authority_entry_condition: {}\n",
+            "duplicate_other_top_level": "schema_version: duplicate\n" + manifest,
+            "duplicate_nested_authority_key": manifest.replace(
+                owner_entry, owner_entry + owner_entry, 1
+            ),
+            "malformed_trailing_yaml": manifest + "\ninvalid: [\n",
+            "multiple_yaml_documents": manifest + "\n---\nschema_version: 2.0.0\n",
+        }
+        for mutation, document in invalid_manifests.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _yaml_mapping(document, "sdk_authority_entry_condition")
 
     def test_pre_merge_rollback_contract_derives_complete_current_span(self) -> None:
         contract = _read(BUILD_CONTRACT)
