@@ -284,11 +284,16 @@ def _visible_markdown_headings(visible: str) -> list[tuple[int, int, int, str]]:
 
 
 def _markdown_section_bounds(
-    markdown: str, title: str, level: int, *, direct_only: bool
+    markdown: str,
+    title: str,
+    level: int,
+    *,
+    direct_only: bool,
+    already_visible: bool = False,
 ) -> tuple[str, int, int]:
     """Return visible Markdown and the structurally selected section bounds."""
 
-    visible = _strip_non_visible_markdown(markdown)
+    visible = markdown if already_visible else _strip_non_visible_markdown(markdown)
     headings = _visible_markdown_headings(visible)
     matches = [
         (index, heading)
@@ -508,7 +513,6 @@ def _assert_sdk_authority_policy(
     section: str,
     *,
     document: str,
-    exclusive_authority_list: bool = False,
 ) -> str:
     required_authorities = tuple(
         key.replace("_", " ")
@@ -542,35 +546,6 @@ def _assert_sdk_authority_policy(
     policy_index = candidate_indexes[0]
     policy = re.sub(r"\s+", " ", items[policy_index]).strip().casefold()
     normalized_section = re.sub(r"\s+", " ", section).strip().casefold()
-
-    if exclusive_authority_list:
-        authority_basis_markers = (
-            "owner decision",
-            "owner approval",
-            "primary evidence",
-            "authority",
-            "approval",
-            "sdk version",
-            "recorded version",
-            "repository history",
-            "history:",
-            "legacy generated tree",
-            "legacy tree",
-            "generated tree",
-            "live-system",
-            "live system",
-            "mannheim",
-            "local installation",
-        )
-        for index, item in enumerate(items):
-            if index == policy_index:
-                continue
-            normalized_item = item.casefold()
-            test_case.assertFalse(
-                any(marker in normalized_item for marker in authority_basis_markers)
-                or bool(re.search(r"\b\d{4}\.\d{2}\.\d+\b", normalized_item)),
-                f"{document}: additional normative SDK authority list item",
-            )
 
     policy_sentences = [
         sentence.strip()
@@ -723,82 +698,217 @@ def _assert_sdk_authority_policy(
     return policy
 
 
+def _normalized_markdown_statement(text: str) -> str:
+    """Normalize visible prose without assuming any SDK version syntax."""
+
+    return (
+        re.sub(r"\s+", " ", text)
+        .strip(" |\t\r\n")
+        .casefold()
+        .replace("_", " ")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+
+
+def _normative_markdown_statements(
+    visible: str,
+) -> list[tuple[str, str, str]]:
+    """Return heading context, full block, and each visible normative statement."""
+
+    statements: list[tuple[str, str, str]] = []
+    heading_stack: list[tuple[int, str]] = []
+
+    def add_block(context: str, block: str) -> None:
+        normalized_block = re.sub(r"\s+", " ", block).strip()
+        if not normalized_block:
+            return
+        clauses = re.split(r"(?<=[.!?])(?:\s+|$)|\s*;\s*", normalized_block)
+        for clause in clauses:
+            if clause.strip():
+                statements.append((context, normalized_block, clause.strip()))
+
+    def add_content(context: str, content: str) -> None:
+        block_lines: list[str] = []
+
+        def flush() -> None:
+            if block_lines:
+                add_block(context, " ".join(block_lines))
+                block_lines.clear()
+
+        for raw_line in content.splitlines():
+            stripped = raw_line.strip()
+            if not stripped:
+                flush()
+                continue
+            if stripped.startswith("|") and stripped.endswith("|"):
+                flush()
+                cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+                if cells and all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+                    continue
+                add_block(context, " | ".join(cells))
+                continue
+            list_item = re.match(
+                r"^ {0,3}(?:\d+[.)]|[-+*])[ \t]+(.*)$", raw_line
+            )
+            if list_item:
+                flush()
+                block_lines.append(list_item.group(1).strip())
+                continue
+            block_lines.append(stripped)
+        flush()
+
+    headings = _visible_markdown_headings(visible)
+    cursor = 0
+    for start, end, level, title in headings:
+        context = " > ".join(item[1] for item in heading_stack)
+        add_content(context, visible[cursor:start])
+        add_block(context, title)
+        heading_stack = [item for item in heading_stack if item[0] < level]
+        heading_stack.append((level, title))
+        cursor = end
+    context = " > ".join(item[1] for item in heading_stack)
+    add_content(context, visible[cursor:])
+    return statements
+
+
 def _assert_no_additional_sdk_authority(
     test_case: unittest.TestCase,
-    normative_section: str,
-    outside_normative_section: str,
+    visible_document: str,
     *,
     allowed_policy: str,
     document: str,
 ) -> None:
-    """Reject authority declarations not made by the one normative list item."""
+    """Classify every visible normative authority statement and fail closed."""
 
-    normalized_section = (
-        re.sub(r"\s+", " ", normative_section)
-        .strip()
-        .casefold()
-        .replace("_", " ")
+    normalized_policy = _normalized_markdown_statement(allowed_policy)
+    basis_patterns = {
+        "owner": (
+            r"\b(?:owner|proprietor|maintainer|custodian)\b|"
+            r"\bsign[ -]?off\b|\bowner (?:decision|consent|approval)\b"
+        ),
+        "primary_evidence": (
+            r"\b(?:approved )?primary evidence\b|"
+            r"\b(?:source|vendor) (?:proof|evidence)\b|\bprovenance\b"
+        ),
+        "authority_record": r"\bauthority (?:basis|evidence|record|source)\b",
+        "history": (
+            r"\bhistory(?=\s*[:=])|\brepository (?:history|record)\b"
+        ),
+        "legacy_tree": (
+            r"\blegacy (?:generated )?(?:tree|output)\b|"
+            r"\bgenerated tree\b"
+        ),
+        "mannheim": r"\bmannheim\b",
+        "live_state": r"\blive[ -]system\b|\blive state\b|\bruntime state\b",
+        "local_state": (
+            r"\blocal installation\b|\binstalled toolchain\b|"
+            r"\bambient sdk\b|\bworkstation installation\b"
+        ),
+        "derived_value": (
+            r"\bfile[ -]?name\b|\bderived version\b|"
+            r"\brecorded version\b|\bversion number\b|\binference\b|"
+            r"\bsdk version\b"
+        ),
+    }
+    positive_pattern = re.compile(
+        r"\b(?:approv\w*|accept\w*|authori[sz]\w*|authorit\w*|valid|binding|"
+        r"select\w*|choos\w*|chosen|proceed\w*|sufficien\w*|"
+        r"permit\w*|allow\w*|govern\w*|control\w*|determin\w*|"
+        r"establish\w*|replace\w*)\b"
     )
-    normalized_policy = allowed_policy.casefold().replace("_", " ")
-    if normalized_policy not in normalized_section:
-        raise AssertionError(f"{document}: canonical SDK policy is not normative")
-    remaining_section = normalized_section.replace(normalized_policy, " ", 1)
-    normalized_outside = (
-        re.sub(r"\s+", " ", outside_normative_section)
-        .strip()
-        .casefold()
-        .replace("_", " ")
+    weakening_pattern = re.compile(
+        r"\b(?:alternative(?:ly)?|optional|either|or|one of|only one|"
+        r"alone|by itself|without|may|can|could|omitt\w*|waiv\w*|"
+        r"need not|not required|not necessary|not needed)\b"
     )
-    statements = [
-        statement.strip()
-        for statement in re.split(
-            r"(?<=[.!?])\s+|\s*\|\s*",
-            remaining_section + " " + normalized_outside,
-        )
-        if statement.strip()
-    ]
-    for statement in statements:
-        basis_scope = any(
-            marker in statement
-            for marker in (
-                "owner",
-                "primary evidence",
-                "authority",
-                "approval",
-                "sdk version",
-                "recorded version",
-                "repository history",
-                "generated tree",
-                "legacy tree",
-                "live system",
-                "live-system",
-                "mannheim",
-                "local installation",
-            )
-        ) or bool(re.search(r"\b\d{4}\.\d{2}\.\d+\b", statement))
-        positive_authority = re.search(
-            r"\b(?:authorit\w*|select\w*|proceed\w*|sufficien\w*|"
-            r"permit\w*|allow\w*|accept\w*)\b",
-            statement,
-        )
-        weakened_authority = re.search(
-            r"\b(?:alternative|optional|either|one of|only one|not required|"
-            r"need not)\b",
-            statement,
-        )
-        authority_claim = basis_scope and bool(
-            positive_authority or weakened_authority
-        )
-        if not authority_claim:
+    safe_denial_pattern = re.compile(
+        r"\b(?:insufficient|prohibited|unresolved|blocked|unknown|unapproved|"
+        r"rejected|pending|forensic reference|test evidence only|"
+        r"evidence only|not demonstrable|descriptive only|remains inert|"
+        r"incapable)\b|"
+        r"\b(?:must not|may not|cannot|does not|do not|never)\b.{0,100}"
+        r"\b(?:authori[sz]\w*|select\w*|approv\w*|establish\w*|replace\w*|"
+        r"govern\w*|control\w*|define\w*|supply\w*|grant\w*)\b|"
+        r"\bnot\b.{0,50}\b(?:authoritative|authority|selected)\b|"
+        r"\bneither\b.{0,100}\bselected\b|"
+        r"\bno (?:ambient sdk|live system source of truth)\b"
+    )
+
+    def has_unnegated_positive(statement: str) -> bool:
+        for match in positive_pattern.finditer(statement):
+            prefix = statement[max(0, match.start() - 100) : match.start()]
+            if not re.search(
+                r"\b(?:must not|may not|cannot|does not|do not|never|neither|"
+                r"not|incapable)"
+                r"\b.{0,80}$",
+                prefix,
+            ):
+                return True
+        return False
+
+    for context, block, statement in _normative_markdown_statements(
+        visible_document
+    ):
+        normalized_block = _normalized_markdown_statement(block)
+        if normalized_block == normalized_policy:
             continue
-        safe_denial = re.search(
-            r"\b(?:insufficient|prohibited|unresolved|blocked|cannot|must not|"
-            r"not allowed|not sufficient|not authoritative)\b",
-            statement,
+        normalized_statement = _normalized_markdown_statement(statement)
+        if normalized_statement == "binding owner decisions":
+            continue
+        normalized_context = _normalized_markdown_statement(context)
+        scoped_text = f"{normalized_context} {normalized_statement}".strip()
+        matched_bases = {
+            name
+            for name, pattern in basis_patterns.items()
+            if re.search(pattern, normalized_statement)
+        }
+        sdk_scope = bool(re.search(r"\b(?:sdk|toolchain)\b", scoped_text)) and bool(
+            re.search(
+                r"\b(?:authorit\w*|select\w*|choice|version|decision|approval|"
+                r"govern\w*|control\w*|establish\w*)\b",
+                scoped_text,
+            )
         )
-        test_case.assertIsNotNone(
-            safe_denial,
-            f"{document}: additional visible SDK authority declaration: {statement}",
+        version_authority_scope = bool(
+            re.search(r"\bversion\b(?!-controlled)", normalized_statement)
+            and re.search(
+                r"\b(?:approv\w*|accept\w*|authorit\w*|sufficien\w*|"
+                r"selected)\b",
+                normalized_statement,
+            )
+        )
+        bare_authority_value = bool(
+            re.search(
+                r"(?:^| > )(?:entry conditions|binding owner decisions)$",
+                normalized_context,
+            )
+            and re.fullmatch(r"\S+", normalized_statement)
+            and any(character.isalnum() for character in normalized_statement)
+        )
+        authority_signal = bool(
+            positive_pattern.search(normalized_statement)
+            or weakening_pattern.search(normalized_statement)
+        )
+        record_like = bool(matched_bases) and bool(
+            re.search(r"[:=]", normalized_statement)
+            or (sdk_scope and "|" in block)
+        )
+        if not (
+            (
+                matched_bases
+                or sdk_scope
+                or version_authority_scope
+                or bare_authority_value
+            )
+            and (authority_signal or record_like or bare_authority_value)
+        ):
+            continue
+        safely_denied = safe_denial_pattern.search(normalized_statement)
+        test_case.assertTrue(
+            safely_denied and not has_unnegated_positive(normalized_statement),
+            f"{document}: additional visible SDK authority declaration "
+            f"in [{context or '<document>'}]: {statement}",
         )
 
 
@@ -807,21 +917,48 @@ def _assert_build_contract_sdk_entry(
 ) -> None:
     visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
     visible, start, end = _markdown_section_bounds(
-        visible, "Entry conditions", 2, direct_only=True
+        visible,
+        "Entry conditions",
+        2,
+        direct_only=True,
+        already_visible=True,
     )
     entry_conditions = visible[start:end].strip("\r\n")
     policy = _assert_sdk_authority_policy(
         test_case,
         entry_conditions,
         document="build contract Entry conditions",
-        exclusive_authority_list=True,
     )
     _assert_no_additional_sdk_authority(
         test_case,
-        entry_conditions,
-        visible[:start] + visible[end:],
+        visible,
         allowed_policy=policy,
         document="build contract",
+    )
+
+
+def _assert_firmware_invariants_sdk_entry(
+    test_case: unittest.TestCase, markdown: str
+) -> None:
+    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
+    visible, start, end = _markdown_section_bounds(
+        visible,
+        "Binding owner decisions",
+        2,
+        direct_only=True,
+        already_visible=True,
+    )
+    binding_decisions = visible[start:end].strip("\r\n")
+    policy = _assert_sdk_authority_policy(
+        test_case,
+        binding_decisions,
+        document="firmware invariants Binding owner decisions",
+    )
+    _assert_no_additional_sdk_authority(
+        test_case,
+        visible,
+        allowed_policy=policy,
+        document="firmware invariants",
     )
 
 
@@ -1260,6 +1397,7 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         invariant_policy = _normative_markdown_section(
             invariants, "Binding owner decisions"
         )
+        _assert_firmware_invariants_sdk_entry(self, invariants)
         _assert_sdk_authority_policy(
             self, invariant_policy, document="firmware invariants"
         )
@@ -1494,6 +1632,124 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 with self.assertRaises(AssertionError):
                     _assert_build_contract_sdk_entry(self, document)
+
+    def test_sdk_authority_guard_rejects_confirmed_approval_record_bypasses(
+        self,
+    ) -> None:
+        invalid_mutations = {
+            "owner_decision_approved": "Owner decision: APPROVED.",
+            "appendix_owner_approved": "Appendix: Owner: APPROVED.",
+            "primary_evidence_omitted": (
+                "Approved primary evidence may be omitted."
+            ),
+            "history_accepted": "History: ACCEPTED.",
+            "legacy_tree_approved": "Legacy tree: APPROVED.",
+            "mannheim_approved": "Mannheim: APPROVED.",
+            "local_installation_approved": "Local installation: APPROVED.",
+            "owner_signoff_governs": (
+                "Owner sign-off alone governs SDK choice."
+            ),
+            "bare_version_number": "42",
+        }
+        for mutation, bypass in invalid_mutations.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _assert_build_contract_sdk_entry(
+                        self, VALID_SDK_ENTRY + "\n" + bypass + "\n"
+                    )
+
+    def test_sdk_authority_guard_rejects_normative_mutation_matrix_in_both_docs(
+        self,
+    ) -> None:
+        def assert_invariants(markdown: str) -> None:
+            _assert_firmware_invariants_sdk_entry(self, markdown)
+
+        mutations = {
+            "synonym_and_mixed_case": "OWNER CONSENT: aCcEpTeD.",
+            "unknown_authority_status": "Owner endorsement: BLESSED.",
+            "unordered_list": "- Repository record: APPROVED.",
+            "visible_table": (
+                "| SDK basis | Status |\n|---|---|\n| Vendor filename | APPROVED |"
+            ),
+            "prose": "The installed toolchain suffices to choose the SDK.",
+            "authority_heading": "## SDK authority: history accepted",
+            "nested_subsection": (
+                "### SDK selection exception\n\nLegacy output is valid authority."
+            ),
+            "appendix": "## Appendix\n\nOwner consent can replace source proof.",
+            "arbitrary_version_format": (
+                "Toolchain release phoenix-rc7 is APPROVED for SDK selection."
+            ),
+            "pure_version_number": "## SDK authority\n\n42: APPROVED.",
+            "explicit_or": (
+                "SDK selection requires owner consent OR source evidence."
+            ),
+            "either_or": (
+                "Either owner sign-off or provenance may govern SDK choice."
+            ),
+            "one_of": "One of the two approvals is sufficient for SDK choice.",
+            "optional": "Source proof is optional for SDK selection.",
+            "may": "Repository history may govern SDK choice.",
+            "can": "The legacy output can establish the selected SDK.",
+            "alone": "Owner consent alone controls toolchain selection.",
+            "sufficient": "Mannheim test results are sufficient evidence.",
+            "without": "SDK selection can proceed without owner consent.",
+            "omitted": "Vendor source proof may be omitted.",
+            "positive_masked_by_denial": (
+                "Owner decision: APPROVED, while history is insufficient."
+            ),
+        }
+        base_documents = {
+            "build_contract": (
+                VALID_SDK_ENTRY,
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            "firmware_invariants": (_read(INVARIANTS_DOCUMENT), assert_invariants),
+        }
+        for document_name, (base, validator) in base_documents.items():
+            for mutation, bypass in mutations.items():
+                placements = {
+                    "before": bypass + "\n\n" + base,
+                    "after": base + "\n" + bypass + "\n",
+                }
+                for placement, document in placements.items():
+                    with self.subTest(
+                        document=document_name,
+                        mutation=mutation,
+                        placement=placement,
+                    ):
+                        with self.assertRaises(AssertionError):
+                            validator(document)
+
+    def test_sdk_authority_guard_accepts_hidden_and_historical_non_authority(
+        self,
+    ) -> None:
+        bypass = "Owner sign-off alone governs SDK choice."
+        historical = (
+            "## Historical note\n\n"
+            "SDK phoenix-rc7 appeared in an old record. This is descriptive "
+            "only and must not authorize or select an SDK.\n"
+        )
+        additions = (
+            "```markdown\n" + bypass + "\n```\n",
+            "<!-- " + bypass + " -->\n",
+            historical,
+        )
+        validators = (
+            (
+                VALID_SDK_ENTRY,
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            (
+                _read(INVARIANTS_DOCUMENT),
+                lambda markdown: _assert_firmware_invariants_sdk_entry(
+                    self, markdown
+                ),
+            ),
+        )
+        for base, validator in validators:
+            for addition in additions:
+                validator(base + "\n" + addition)
 
     def test_sdk_authority_guard_excludes_inline_code_from_normative_text(self) -> None:
         _assert_build_contract_sdk_entry(
