@@ -36,6 +36,9 @@ RUBY_YAML_LOADER = r"""
 input = STDIN.read
 stream = Psych.parse_stream(input)
 raise "exactly one YAML document required" unless stream.children.length == 1
+document = stream.children.first
+root = document.root
+raise "top-level YAML value must be a mapping" unless root.is_a?(Psych::Nodes::Mapping)
 
 validate = nil
 validate = lambda do |node|
@@ -44,6 +47,9 @@ validate = lambda do |node|
     keys = {}
     node.children.each_slice(2) do |key, value|
       raise "non-scalar YAML mapping key" unless key.is_a?(Psych::Nodes::Scalar)
+      unless key.tag.nil? || key.tag == "tag:yaml.org,2002:str"
+        raise "non-string YAML mapping key"
+      end
       signature = key.value
       raise "duplicate YAML key: #{key.value}" if keys.key?(signature)
       keys[signature] = true
@@ -57,6 +63,13 @@ validate = lambda do |node|
 end
 
 validate.call(stream)
+sdk_authority_keys = root.children.each_slice(2).count do |key, _value|
+  key.value == "sdk_authority_entry_condition"
+end
+unless sdk_authority_keys == 1
+  raise "sdk_authority_entry_condition must occur exactly once at top level"
+end
+
 value = YAML.safe_load(
   input,
   permitted_classes: [],
@@ -64,6 +77,20 @@ value = YAML.safe_load(
   aliases: false
 )
 raise "top-level YAML value must be a mapping" unless value.is_a?(Hash)
+
+validate_loaded = nil
+validate_loaded = lambda do |loaded|
+  case loaded
+  when Hash
+    loaded.each do |key, child|
+      raise "non-string YAML mapping key" unless key.is_a?(String)
+      validate_loaded.call(child)
+    end
+  when Array
+    loaded.each { |child| validate_loaded.call(child) }
+  end
+end
+validate_loaded.call(value)
 STDOUT.write(JSON.generate(value))
 """
 
@@ -97,11 +124,24 @@ def _assert_scalar(
 def _strip_non_visible_markdown(
     markdown: str, *, strip_inline_code: bool = False
 ) -> str:
-    """Remove fenced/inline code and closed comments; reject unclosed comments."""
+    """Remove Markdown code and closed comments; reject unclosed comments."""
 
     visible: list[str] = []
     in_comment = False
     fence: tuple[str, int] | None = None
+    list_content_indent: int | None = None
+
+    def indentation_width(text: str) -> int:
+        width = 0
+        for character in text:
+            if character == " ":
+                width += 1
+            elif character == "\t":
+                width += 4 - (width % 4)
+            else:
+                break
+        return width
+
     for raw_line in markdown.splitlines(keepends=True):
         if raw_line.endswith("\r\n"):
             body, line_ending = raw_line[:-2], "\r\n"
@@ -150,6 +190,29 @@ def _strip_non_visible_markdown(
             fence = (marker[0], len(marker))
             visible.append(line_ending)
         else:
+            list_item = re.match(
+                r"^(?: {0,3})(?:\d+[.)]|[-+*])[ \t]+", visible_body
+            )
+            if list_item:
+                list_content_indent = indentation_width(list_item.group(0))
+            elif visible_body.strip():
+                indentation = indentation_width(visible_body)
+                code_indent = (
+                    list_content_indent + 4
+                    if list_content_indent is not None
+                    else 4
+                )
+                if indentation >= code_indent:
+                    visible.append(line_ending)
+                    continue
+                if (
+                    list_content_indent is not None
+                    and indentation < list_content_indent
+                ):
+                    list_content_indent = None
+                    if indentation >= 4:
+                        visible.append(line_ending)
+                        continue
             visible.append(visible_body + line_ending)
     if in_comment:
         raise AssertionError("unclosed HTML comment")
@@ -441,7 +504,11 @@ def _ordered_list_items(section: str) -> list[str]:
 
 
 def _assert_sdk_authority_policy(
-    test_case: unittest.TestCase, section: str, *, document: str
+    test_case: unittest.TestCase,
+    section: str,
+    *,
+    document: str,
+    exclusive_authority_list: bool = False,
 ) -> str:
     required_authorities = tuple(
         key.replace("_", " ")
@@ -461,16 +528,49 @@ def _assert_sdk_authority_policy(
     ):
         test_case.assertEqual(SDK_AUTHORITY_CONTRACT[prohibited_field], "PROHIBITED")
 
-    candidates = [
-        item
-        for item in _ordered_list_items(section)
+    items = _ordered_list_items(section)
+    candidate_indexes = [
+        index
+        for index, item in enumerate(items)
         if "authoritative sdk version" in item.casefold()
     ]
     test_case.assertEqual(
-        len(candidates), 1, f"{document}: exactly one SDK authority condition required"
+        len(candidate_indexes),
+        1,
+        f"{document}: exactly one SDK authority condition required",
     )
-    policy = re.sub(r"\s+", " ", candidates[0]).strip().casefold()
+    policy_index = candidate_indexes[0]
+    policy = re.sub(r"\s+", " ", items[policy_index]).strip().casefold()
     normalized_section = re.sub(r"\s+", " ", section).strip().casefold()
+
+    if exclusive_authority_list:
+        authority_basis_markers = (
+            "owner decision",
+            "owner approval",
+            "primary evidence",
+            "authority",
+            "approval",
+            "sdk version",
+            "recorded version",
+            "repository history",
+            "history:",
+            "legacy generated tree",
+            "legacy tree",
+            "generated tree",
+            "live-system",
+            "live system",
+            "mannheim",
+            "local installation",
+        )
+        for index, item in enumerate(items):
+            if index == policy_index:
+                continue
+            normalized_item = item.casefold()
+            test_case.assertFalse(
+                any(marker in normalized_item for marker in authority_basis_markers)
+                or bool(re.search(r"\b\d{4}\.\d{2}\.\d+\b", normalized_item)),
+                f"{document}: additional normative SDK authority list item",
+            )
 
     policy_sentences = [
         sentence.strip()
@@ -711,7 +811,10 @@ def _assert_build_contract_sdk_entry(
     )
     entry_conditions = visible[start:end].strip("\r\n")
     policy = _assert_sdk_authority_policy(
-        test_case, entry_conditions, document="build contract Entry conditions"
+        test_case,
+        entry_conditions,
+        document="build contract Entry conditions",
+        exclusive_authority_list=True,
     )
     _assert_no_additional_sdk_authority(
         test_case,
@@ -1086,6 +1189,39 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     _assert_build_contract_sdk_entry(self, document)
 
+    def test_sdk_entry_condition_guard_rejects_hidden_policy_and_basis_records(
+        self,
+    ) -> None:
+        valid_body = VALID_SDK_ENTRY.removeprefix("## Entry conditions\n")
+        nested_indented_code = "".join(
+            f"       {line}" if line.strip() else line
+            for line in valid_body.splitlines(keepends=True)
+        )
+        invalid_mutations = {
+            "nested_indented_markdown_code": (
+                "# Contract\n\n## Entry conditions\n\n1. Placeholder policy.\n"
+                + nested_indented_code
+            ),
+            "additional_owner_only_record": VALID_SDK_ENTRY
+            + "\n2. Owner decision: APPROVED.\n",
+            "additional_version_only_record": VALID_SDK_ENTRY
+            + "\n2. SDK version: 2025.12.1.\n",
+            "additional_history_record": VALID_SDK_ENTRY
+            + "\n2. Repository history: 2025.12.1.\n",
+            "additional_legacy_tree_record": VALID_SDK_ENTRY
+            + "\n2. Legacy tree: 2025.12.1.\n",
+            "additional_live_system_record": VALID_SDK_ENTRY
+            + "\n2. Live-system state: 2025.12.1.\n",
+            "additional_mannheim_record": VALID_SDK_ENTRY
+            + "\n2. Mannheim: 2025.12.1.\n",
+            "additional_local_installation_record": VALID_SDK_ENTRY
+            + "\n2. Local installation: 2025.12.1.\n",
+        }
+        for mutation, document in invalid_mutations.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _assert_build_contract_sdk_entry(self, document)
+
     def test_sdk_entry_condition_guard_accepts_combined_reordered_wrapping(
         self,
     ) -> None:
@@ -1394,6 +1530,29 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 with self.assertRaises(AssertionError):
                     _yaml_mapping(document, "sdk_authority_entry_condition")
+
+    def test_yaml_guard_rejects_semantic_top_level_duplicates_and_missing_sdk_key(
+        self,
+    ) -> None:
+        manifest = _read(PROVENANCE_MANIFEST)
+        renamed_sdk_key = manifest.replace(
+            "sdk_authority_entry_condition:\n",
+            "renamed_sdk_authority_entry_condition:\n",
+            1,
+        )
+        invalid_manifests = {
+            "binary_tag_duplicate_sdk_authority": manifest
+            + "\n!!binary "
+            + "c2RrX2F1dGhvcml0eV9lbnRyeV9jb25kaXRpb24=: {}\n",
+            "integer_semantic_duplicate": manifest + "\n1: first\n01: second\n",
+            "boolean_semantic_duplicate": manifest
+            + "\ntrue: first\nTRUE: second\n",
+            "missing_sdk_authority_top_level": renamed_sdk_key,
+        }
+        for mutation, document in invalid_manifests.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _yaml_document(document)
 
     def test_pre_merge_rollback_contract_derives_complete_current_span(self) -> None:
         contract = _read(BUILD_CONTRACT)
