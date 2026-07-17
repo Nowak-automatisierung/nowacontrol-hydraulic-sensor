@@ -3,18 +3,30 @@ product: nowaControl Hydraulic Sensor
 repository: Nowak-automatisierung/nowacontrol-hydraulic-sensor
 baseline_branch: main
 baseline_commit: 9a3e88454fb95ce600e2fbb1049718e137e6b35b
-status: draft_review_required
+review_state: draft_review_required
+
+status_vocabulary:
+  - VERIFIED
+  - INFERRED
+  - UNKNOWN
+  - PROPOSED
+  - REQUIRED
+  - VERIFIED_CONFLICT
 
 authoritative_sdk_version: unresolved
 observed_sdk_versions:
   - "2025.12.1"
   - "2025.12.2"
 sdk_authority_entry_condition:
-  approved_owner_decision: required
-  approved_primary_evidence: required
-  combination: all
-  owner_decision_alone: insufficient
-  authoritative_sdk_version: unresolved
+  approved_owner_decision: REQUIRED
+  approved_primary_evidence: REQUIRED
+  combination: AND
+  owner_decision_alone: INSUFFICIENT
+  primary_evidence_alone: INSUFFICIENT
+  alternative_authority: PROHIBITED
+  optional_authority: PROHIBITED
+  disjunctive_authority: PROHIBITED
+  authoritative_sdk_version: UNRESOLVED
 generated_tree_authority: forensic_reference
 semantic_compatibility_requirement: mandatory
 byte_identity_status: not_demonstrable
@@ -54,15 +66,15 @@ provenance_file_paths:
 provenance_files:
   - path: sensor-platform/firmware/applications/zigbee-ha/cmake_gcc/nowacontrol-zigbee-ha.cmake
     sha256: 9305e1ea3e91557a798b3a6a49eba946bf410bbcd92c5ee853d4aa506def1ca1
-    status: verified
+    status: VERIFIED
     authority: forensic_reference
   - path: sensor-platform/firmware/applications/zigbee-ha/config/zcl/slc_args.json
     sha256: 6765d71b80b2422a573be2ece4f6badfa612636eef59c5af2bf9c449b6a76785
-    status: verified
+    status: VERIFIED
     authority: forensic_reference
   - path: sensor-platform/firmware/applications/zigbee-ha/config/zcl/zcl_config.zap
     sha256: 86cd07da180edbd79af37efde22c2e5909d8da9b7b07bec42074170d3b8f3889
-    status: verified
+    status: VERIFIED
     authority: forensic_reference
 
 verified_tool_versions:
@@ -84,108 +96,108 @@ verified_tool_versions:
 
 inferred_values:
   - name: mixed_generator_epochs
-    status: inferred
+    status: INFERRED
     value: likely
     basis: "The generated-tree metadata observes 2025.12.1 while current project metadata observes 2025.12.2."
   - name: future_regeneration_will_change_files
-    status: inferred
+    status: INFERRED
     value: possible
     basis: "The unresolved SDK and semantic conflicts make a non-empty generated-tree diff plausible."
   - name: historical_generated_tree_precedes_current_project_metadata
-    status: inferred
+    status: INFERRED
     value: likely
     basis: "Generated metadata and current project descriptors record different SDK versions."
 
 unknown_values:
   - name: authoritative_sdk_version
-    status: unknown
+    status: UNKNOWN
     reason: "No approved evidence selects 2025.12.1 or 2025.12.2."
   - name: simplicity_studio_version
-    status: unknown
+    status: UNKNOWN
     reason: "No portable, approved version pin is present."
   - name: slc_version
-    status: unknown
+    status: UNKNOWN
     reason: "No portable, approved version pin is present."
   - name: zap_version
-    status: unknown
+    status: UNKNOWN
     reason: "No portable, approved version pin is present."
   - name: cmake_version
-    status: unknown
+    status: UNKNOWN
     reason: "No firmware-build CMake pin is approved."
   - name: compiler_version
-    status: unknown
+    status: UNKNOWN
     reason: "No firmware compiler pin is approved."
   - name: ninja_version
-    status: unknown
+    status: UNKNOWN
     reason: "No firmware-build Ninja pin is approved."
   - name: historical_firmware_artifact
-    status: unknown
+    status: UNKNOWN
     reason: "No approved historical binary is available for comparison."
   - name: historical_firmware_hash
-    status: unknown
+    status: UNKNOWN
     reason: "No approved historical binary is available for hashing."
   - name: installed_device_population
-    status: unknown
+    status: UNKNOWN
     reason: "No approved device inventory establishes deployed firmware state."
   - name: exact_board_electrical_configuration
-    status: unknown
+    status: UNKNOWN
     reason: "The repository names XIAO MG24 but does not close all board and oscillator conflicts."
   - name: semantic_identity_to_deployed_firmware
-    status: unknown
+    status: UNKNOWN
     reason: "No deployed-device or historical-artifact comparison is available."
 
 known_semantic_conflicts:
   - id: sdk_version
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "2025.12.1"
       - "2025.12.2"
     disposition: unresolved_no_selection
   - id: hfxo_frequency
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "38.4 MHz"
       - "39 MHz"
     disposition: preserve_files_resolve_before_build
   - id: zigbee_security_profile
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - home_automation
       - zigbee_3_0
     disposition: preserve_current_behavior_separate_migration
   - id: radio_tx_power
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "+10 dBm initial PA configuration"
       - "+3 dBm network steering configuration"
     disposition: no_rf_change_resolve_before_release
   - id: device_role
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - router
       - sleeping_end_device
     disposition: no_arbitrary_selection
   - id: endpoint_cluster_contract
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "three temperature endpoints using cluster 0x0402"
       - "one pressure endpoint using cluster 0x0403"
     disposition: no_arbitrary_selection
   - id: basic_and_power_attributes
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "ZAP source selections"
       - "legacy generated attribute table and application writes"
     disposition: generated_tree_is_forensic_reference
   - id: reporting_contract
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "ZAP reportable metadata"
       - "legacy generated reporting defaults"
       - "V1 design-reference intervals"
     disposition: semantic_contract_required
   - id: model_identifier
-    status: verified_conflict
+    status: VERIFIED_CONFLICT
     values:
       - "Hydraulic Sensor V1"
       - hydraulic-sensor-v1

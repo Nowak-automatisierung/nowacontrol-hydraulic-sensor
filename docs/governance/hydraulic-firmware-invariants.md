@@ -14,20 +14,26 @@ authoritative future product definition.
 
 | Status | Meaning |
 |---|---|
-| `VERIFIED` | Directly observed in the baseline repository and reproducible by a read-only check. It does not by itself grant product authority. |
-| `REQUIRED` | Binding owner decision or release condition. Future work must preserve or satisfy it. |
-| `UNKNOWN` | Evidence is absent or conflicting. It must not be represented as `VERIFIED`. |
-| `PROPOSED` | Candidate future decision with no current authority. It must not change generation, firmware, or release state. |
+| `VERIFIED` | Confirmed by reproducible primary or technical evidence. It does not by itself grant product authority. |
+| `INFERRED` | Derived from confirmed observations but not directly proven. It must not establish toolchain, SDK, product, build, or release authority. |
+| `UNKNOWN` | Not sufficiently evidenced or not established. It must not authorize toolchain, SDK, product, build, or release action. |
+| `PROPOSED` | Proposed, unapproved future state. It must not authorize toolchain, SDK, product, build, or release action. |
+| `REQUIRED` | Mandatory prerequisite or gate. It does not mean that the requirement is satisfied. |
+| `VERIFIED_CONFLICT` | Multiple individually verified sources or observations conflict. The conflict is confirmed but unresolved; it must not be treated as VERIFIED or as an authoritative selection. |
 
 ## Binding owner decisions
 
 - `AUTHORITATIVE_SDK_VERSION = UNRESOLVED` (`REQUIRED`). The authoritative SDK
   version must be selected by an approved owner decision and supported by
-  approved primary evidence; both conditions are jointly required. An owner
-  decision alone, conflict resolution alone, repository history alone, the
-  legacy generated tree alone, Mannheim test evidence alone, live-system state
-  alone, inference, or an SDK version number alone are insufficient. Approved
-  primary evidence must be a traceable, approved vendor or toolchain source
+  approved primary evidence. The canonical machine-readable contract is the
+  `sdk_authority_entry_condition` mapping in
+  `hydraulic-firmware-provenance.yaml`; both conditions are jointly required
+  through AND. An owner decision alone and approved primary evidence alone are
+  each insufficient; alternative, optional, or disjunctive authority is
+  prohibited. Conflict resolution alone, repository history alone, the legacy
+  generated tree alone, Mannheim test evidence alone, live-system state alone,
+  inference, or an SDK version number alone are insufficient. Approved primary
+  evidence must be a traceable, approved vendor or toolchain source
   unambiguously tied to the selected SDK version, verifiable and
   version-controlled; a local installation, filename, or derived version
   statement is insufficient. Neither `2025.12.1` nor `2025.12.2` is selected by
@@ -55,10 +61,10 @@ authoritative future product definition.
 |---|---|---|
 | Chip target | `VERIFIED` | Project descriptors name `EFR32MG24B220F1536IM48`. Future regeneration must use the approved exact part after toolchain authorization. |
 | Physical board | `VERIFIED` / `UNKNOWN` | Repository documentation and source comments name `XIAO MG24`; the exact electrical board configuration, oscillator fit, antenna population, and production assembly remain `UNKNOWN`. The board name alone does not settle those facts. |
-| HFXO | `VERIFIED` conflict | Architecture documentation states `38.4 MHz`; the preserved oscillator configuration states `39 MHz`. Neither value is selected here. A board-primary source, SDK compatibility evidence, clean builds, and RF evidence are required before resolution. |
-| Antenna switch | `VERIFIED` observation | Application source drives `PB5` high as RF-switch enable and `PB4` high for the external antenna. This describes preserved source behavior only; hardware polarity and production antenna selection remain unverified. No RF or antenna change is authorized. |
-| TX power | `VERIFIED` conflict | PA configuration contains `+10 dBm`; network steering contains `+3 dBm`. A 20 dBm mapping table is a capability reference, not proof of operational output. Conducted power, final cap, EIRP, and authoritative runtime value remain `UNKNOWN`; Issue #9 remains the separate decision path. |
-| Channel mask | `VERIFIED` observation | Network steering contains `0x07FFF800` (Zigbee channels 11 through 26). It remains preserved evidence, not a newly approved deployment default. |
+| HFXO | `VERIFIED_CONFLICT` | Architecture documentation states `38.4 MHz`; the preserved oscillator configuration states `39 MHz`. Neither value is selected here. A board-primary source, SDK compatibility evidence, clean builds, and RF evidence are required before resolution. |
+| Antenna switch | `VERIFIED` | Application source drives `PB5` high as RF-switch enable and `PB4` high for the external antenna. This describes a verified observation of preserved source behavior only; hardware polarity and production antenna selection remain unverified. No RF or antenna change is authorized. |
+| TX power | `VERIFIED_CONFLICT` | PA configuration contains `+10 dBm`; network steering contains `+3 dBm`. A 20 dBm mapping table is a capability reference, not proof of operational output. Conducted power, final cap, EIRP, and authoritative runtime value remain `UNKNOWN`; Issue #9 remains the separate decision path. |
+| Channel mask | `VERIFIED` | Network steering contains `0x07FFF800` (Zigbee channels 11 through 26). It is a verified observation of preserved evidence, not a newly approved deployment default. |
 
 ## Zigbee product-contract conflicts
 
@@ -79,7 +85,7 @@ chosen merely because it appears newer, generated, or easier to build.
 
 The current project descriptor requests Zigbee 3.0 security while the preserved
 generated device configuration selects Home Automation security for the primary
-network. That is a `VERIFIED` semantic conflict. The current generated behavior
+network. That is a `VERIFIED_CONFLICT`. The current generated behavior
 must be preserved for this baseline: `CURRENT_SECURITY_BEHAVIOR = PRESERVE`.
 Changing it is a migration, not regeneration cleanup:
 `ZIGBEE_3_MIGRATION = SEPARATE_CHANGE`.
@@ -93,8 +99,8 @@ action, flash, or live network test is authorized by this document.
 |---|---|---|
 | Bootloader | `UNKNOWN` | An application bootloader interface/component is referenced, but no approved bootloader artifact, slot layout, fallback proof, or HIL evidence is established. Issue #3 remains open. |
 | Signing | `UNKNOWN` | No approved signing-key workflow, signer identity, signed firmware, or verification evidence is established. Issue #8 remains open. |
-| OTA | `UNKNOWN` / blocked | Documentation and workflow scaffolding do not prove a deployable OTA path. Device inventory, bootloader, signing, rollback, and HIL gates are open; Issue #7 remains open. |
-| Rollback | `UNKNOWN` / blocked | No deployed population, known-good artifact set, compatibility matrix, or demonstrated fallback exists. |
+| OTA | `UNKNOWN` | Documentation and workflow scaffolding do not prove a deployable OTA path. It remains blocked; device inventory, bootloader, signing, rollback, and HIL gates are open, and Issue #7 remains open. |
+| Rollback | `UNKNOWN` | No deployed population, known-good artifact set, compatibility matrix, or demonstrated fallback exists; rollback remains blocked. |
 | Existing devices | `INSTALLED_DEVICE_POPULATION = UNKNOWN` | No assumption of zero, one, or many devices is permitted. No deployment plan may proceed from repository text alone. |
 
 ## Platform and site boundaries

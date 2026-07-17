@@ -13,11 +13,14 @@ All entry conditions are mandatory and must be version-controlled before the
 first authorized tool invocation:
 
 1. The authoritative SDK version must be selected by an approved owner decision
-   and supported by approved primary evidence, without inference from repository
-   history, generated output, test-site state, or live-system state. Approved
-   primary evidence must be a traceable, approved vendor or toolchain source
-   unambiguously tied to the selected SDK version, verifiable and
-   version-controlled—not merely a local installation, filename, or derived
+   and supported by approved primary evidence. The canonical authority contract
+   is the `sdk_authority_entry_condition` mapping in
+   `hydraulic-firmware-provenance.yaml`. It requires both through an AND
+   combination: neither an owner decision alone nor approved primary evidence
+   alone is sufficient, and alternative, optional, or disjunctive authority is
+   prohibited. Approved primary evidence must be a traceable, approved vendor or
+   toolchain source unambiguously tied to the selected SDK version, verifiable
+   and version-controlled—not merely a local installation, filename, or derived
    version statement. The following are insufficient: an owner decision alone;
    conflict resolution alone; repository history alone; the legacy generated
    tree alone; Mannheim test evidence alone; live-system state alone; inference;
@@ -146,18 +149,43 @@ independent review.
 
 ### Before merge
 
-Rollback of this unmerged PR means closing or reverting the entire PR. If the
-commits are reverted individually, they must be reverted in this reverse order:
+Rollback of this unmerged PR means closing or reverting the entire PR. A fixed
+list in this document is never the current normative revert list. Immediately
+before merge, record `BASE_SHA` as the exact PR base SHA and `HEAD_SHA` as the
+exact reviewed PR head SHA, then confirm that neither ref changed while the
+procedure was prepared.
 
-1. Finding correction commit
-   (`fix: close remaining HYD-BASELINE-01B audit findings`).
-2. `31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18`.
-3. `fdd493f0f9e049ad4411b90fcd11e625756e1400`.
-4. `001aad1d38ad2f39f00253a2a9a36208bf3f96e7`.
+Derive the complete linear commit span from `BASE_SHA..HEAD_SHA`. Verify with
+`git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"`, obtain the chronological
+span with `git rev-list --reverse "$BASE_SHA..$HEAD_SHA"`, and inspect every
+record from `git rev-list --parents "$BASE_SHA..$HEAD_SHA"`. The first commit
+must have exactly `BASE_SHA` as its single parent; every following commit must
+have exactly the preceding span commit as its single parent; the final commit
+must equal `HEAD_SHA`. The observed count must equal
+`git rev-list --count "$BASE_SHA..$HEAD_SHA"`.
 
-Reverting only `001aad1d38ad2f39f00253a2a9a36208bf3f96e7` is not a complete
-rollback. A complete pre-merge rollback must restore the tree at
-`9a3e88454fb95ce600e2fbb1049718e137e6b35b`.
+Derive the revert list from the same validated span and revert every commit in
+exact reverse chronological order, starting with `HEAD_SHA` and ending with the
+first commit after `BASE_SHA`. The reverse list must have the same count and be
+the exact reverse of the chronological list. Stop and fail closed before any
+revert if there is a foreign, additional, missing, non-linear, repeated, or
+ambiguous commit or parent relationship.
+
+Run the complete sequence in an external clean copy with
+`git revert --no-commit` and compare `git write-tree` with
+`git rev-parse "$BASE_SHA^{tree}"`. Success requires the exact base tree; no
+residual file diff is permitted. For the current baseline base SHA
+`9a3e88454fb95ce600e2fbb1049718e137e6b35b`, that reproducible base tree is
+`45867099131ea8a0a1f2bb99449eec26469c7460`.
+
+The following is a historical five-commit snapshot for the head reviewed before
+this repair; it is not a claim about the current or future complete span:
+
+1. `834e84f3781c3ecec2b29373951bf0973078b4b8`.
+2. `3d5fb727c282943d496a5b7bcbf62f69b5e27168`.
+3. `31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18`.
+4. `fdd493f0f9e049ad4411b90fcd11e625756e1400`.
+5. `001aad1d38ad2f39f00253a2a9a36208bf3f96e7`.
 
 ### After merge
 

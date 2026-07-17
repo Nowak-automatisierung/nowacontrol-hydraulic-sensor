@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unittest
 
 
@@ -17,6 +18,18 @@ BUILD_CONTRACT = GOVERNANCE_ROOT / "hydraulic-reproducible-build-contract.md"
 WORKFLOW = REPOSITORY_ROOT / ".github/workflows/validate-homeassistant.yml"
 BASELINE_COMMIT = "9a3e88454fb95ce600e2fbb1049718e137e6b35b"
 RE_AUDIT_START_HEAD = "31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18"
+
+SDK_AUTHORITY_CONTRACT = {
+    "approved_owner_decision": "REQUIRED",
+    "approved_primary_evidence": "REQUIRED",
+    "combination": "AND",
+    "owner_decision_alone": "INSUFFICIENT",
+    "primary_evidence_alone": "INSUFFICIENT",
+    "alternative_authority": "PROHIBITED",
+    "optional_authority": "PROHIBITED",
+    "disjunctive_authority": "PROHIBITED",
+    "authoritative_sdk_version": "UNRESOLVED",
+}
 
 PROVENANCE_FILES = {
     Path(
@@ -45,8 +58,10 @@ def _assert_scalar(
     test_case.assertRegex(text, pattern, f"missing {key}: {expected}")
 
 
-def _strip_non_visible_markdown(markdown: str) -> str:
-    """Remove fenced code and HTML comments, including unclosed constructs."""
+def _strip_non_visible_markdown(
+    markdown: str, *, strip_inline_code: bool = False
+) -> str:
+    """Remove fenced/inline code and closed comments; reject unclosed comments."""
 
     visible: list[str] = []
     in_comment = False
@@ -100,7 +115,35 @@ def _strip_non_visible_markdown(markdown: str) -> str:
             visible.append(line_ending)
         else:
             visible.append(visible_body + line_ending)
-    return "".join(visible)
+    if in_comment:
+        raise AssertionError("unclosed HTML comment")
+
+    without_fences_or_comments = "".join(visible)
+    if not strip_inline_code:
+        return without_fences_or_comments
+    without_inline_code: list[str] = []
+    cursor = 0
+    inline_opener = re.compile(r"`+")
+    while cursor < len(without_fences_or_comments):
+        opener = inline_opener.search(without_fences_or_comments, cursor)
+        if opener is None:
+            without_inline_code.append(without_fences_or_comments[cursor:])
+            break
+        marker = opener.group(0)
+        closer_pattern = re.compile(
+            rf"(?<!`){re.escape(marker)}(?!`)"
+        )
+        closer = closer_pattern.search(without_fences_or_comments, opener.end())
+        if closer is None:
+            without_inline_code.append(without_fences_or_comments[cursor:])
+            break
+        without_inline_code.append(without_fences_or_comments[cursor:opener.start()])
+        hidden = without_fences_or_comments[opener.start():closer.end()]
+        without_inline_code.append(
+            "".join(character if character in "\r\n" else " " for character in hidden)
+        )
+        cursor = closer.end()
+    return "".join(without_inline_code)
 
 
 def _normative_markdown_section(markdown: str, title: str) -> str:
@@ -274,6 +317,54 @@ def _validated_rebase_rollback_order(
     return tuple(reverse_span)
 
 
+def _git_commit_parents(
+    base: str, chronological: tuple[str, ...]
+) -> dict[str, tuple[str, ...]]:
+    """Return the observed parent tuple for every commit in one candidate span."""
+
+    if not chronological:
+        raise AssertionError("missing pre-merge commit span")
+    parents: dict[str, tuple[str, ...]] = {}
+    for commit in chronological:
+        record = subprocess.check_output(
+            ["git", "rev-list", "--parents", "-n", "1", commit],
+            cwd=REPOSITORY_ROOT,
+            text=True,
+        ).split()
+        if not record or record[0] != commit:
+            raise AssertionError("ambiguous pre-merge commit record")
+        parents[commit] = tuple(record[1:])
+    if base not in parents[chronological[0]]:
+        raise AssertionError("pre-merge span does not start at BASE_SHA")
+    return parents
+
+
+def _validated_pre_merge_revert_order(
+    *,
+    base: str,
+    head: str,
+    parents: dict[str, tuple[str, ...]],
+    candidate_order: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Validate one complete linear BASE..HEAD span and its exact reverse order."""
+
+    expected_order: list[str] = []
+    seen: set[str] = set()
+    current = head
+    while current != base:
+        if current in seen or current not in parents:
+            raise AssertionError("missing, foreign, or ambiguous pre-merge commit")
+        seen.add(current)
+        commit_parents = parents[current]
+        if len(commit_parents) != 1:
+            raise AssertionError("non-linear pre-merge history")
+        expected_order.append(current)
+        current = commit_parents[0]
+    if not expected_order or tuple(expected_order) != candidate_order:
+        raise AssertionError("pre-merge revert order is incomplete or not exact reverse")
+    return tuple(expected_order)
+
+
 def _ordered_list_items(section: str) -> list[str]:
     item_pattern = re.compile(
         r"(?ms)^ {0,3}(?:\d+[.)]|[-+*])\s+(.*?)"
@@ -287,7 +378,25 @@ def _ordered_list_items(section: str) -> list[str]:
 
 def _assert_sdk_authority_policy(
     test_case: unittest.TestCase, section: str, *, document: str
-) -> None:
+) -> str:
+    required_authorities = tuple(
+        key.replace("_", " ")
+        for key, value in SDK_AUTHORITY_CONTRACT.items()
+        if value == "REQUIRED"
+    )
+    test_case.assertEqual(
+        required_authorities,
+        ("approved owner decision", "approved primary evidence"),
+        f"{document}: canonical authority contract changed",
+    )
+    test_case.assertEqual(SDK_AUTHORITY_CONTRACT["combination"], "AND")
+    for prohibited_field in (
+        "alternative_authority",
+        "optional_authority",
+        "disjunctive_authority",
+    ):
+        test_case.assertEqual(SDK_AUTHORITY_CONTRACT[prohibited_field], "PROHIBITED")
+
     items = _ordered_list_items(section)
     if items:
         candidates = [
@@ -317,11 +426,7 @@ def _assert_sdk_authority_policy(
     for sentence in policy_sentences:
         if not all(
             requirement in sentence
-            for requirement in (
-                "authoritative sdk version",
-                "approved owner decision",
-                "approved primary evidence",
-            )
+            for requirement in ("authoritative sdk version", *required_authorities)
         ) or not re.search(r"\b(?:must|required|requires|mandatory)\b", sentence):
             continue
         owner_index = sentence.index("approved owner decision")
@@ -346,6 +451,35 @@ def _assert_sdk_authority_policy(
         r"\b(?:must not|not required|need not|optional|either)\b",
         f"{document}: combined SDK condition is negated or weakened",
     )
+    for sentence in policy_sentences:
+        sdk_authority_statement = "sdk" in sentence and re.search(
+            r"(?:select\w*|authorit\w*|proceed)", sentence
+        )
+        weakened_authority = (
+            "owner decision" in sentence or "primary evidence" in sentence
+        ) and re.search(r"\b(?:optional|alternative|either|one of)\b", sentence)
+        safe_denial = re.search(
+            r"\b(?:insufficient|prohibited|unresolved|blocked|cannot|must not|not allowed)\b",
+            sentence,
+        )
+        evidence_definition = all(
+            requirement in sentence
+            for requirement in (
+                "traceable, approved vendor or toolchain source",
+                "selected sdk version",
+                "verifiable and version-controlled",
+            )
+        )
+        allowed_projection = (
+            sentence in combined_conditions
+            or "sdk_authority_entry_condition" in sentence
+            or evidence_definition
+            or safe_denial
+        )
+        test_case.assertFalse(
+            (sdk_authority_statement or weakened_authority) and not allowed_projection,
+            f"{document}: authority statement contradicts canonical AND contract",
+        )
     for contradiction in (
         "not binding",
         "not mandatory",
@@ -357,7 +491,6 @@ def _assert_sdk_authority_policy(
         "can be omitted",
         "non-binding",
         "illustrative",
-        "optional",
         "owner decision is sufficient",
         "owner decision alone is sufficient",
         "without approved primary evidence",
@@ -432,14 +565,84 @@ def _assert_sdk_authority_policy(
         test_case.assertIn(
             evidence_requirement, policy, f"{document}: incomplete evidence policy"
         )
+    return policy
+
+
+def _assert_no_additional_sdk_authority(
+    test_case: unittest.TestCase,
+    markdown: str,
+    *,
+    allowed_policy: str,
+    document: str,
+) -> None:
+    """Reject every visible second SDK-authority declaration outside the policy."""
+
+    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
+    normalized = re.sub(r"\s+", " ", visible).strip().casefold().replace("_", " ")
+    normalized_policy = allowed_policy.casefold().replace("_", " ")
+    if normalized_policy not in normalized:
+        raise AssertionError(f"{document}: canonical SDK policy is not visible")
+    remaining = normalized.replace(normalized_policy, " ", 1)
+    statements = [
+        statement.strip()
+        for statement in re.split(r"(?<=[.!?])\s+|\s*\|\s*", remaining)
+        if statement.strip()
+    ]
+    for statement in statements:
+        sdk_scope = "sdk" in statement and any(
+            marker in statement
+            for marker in (
+                "authorit",
+                "select",
+                "approval",
+                "approved",
+                "primary evidence",
+                "owner decision",
+                "proceed",
+            )
+        )
+        authority_term_scope = (
+            "owner decision" in statement or "primary evidence" in statement
+        ) and any(
+            marker in statement
+            for marker in (
+                "alone",
+                "alternative",
+                "optional",
+                "sufficient",
+                "not required",
+                "need not",
+                "one of",
+                "either",
+                " or ",
+            )
+        )
+        if not sdk_scope and not authority_term_scope:
+            continue
+        unresolved_only = "unresolved" in statement and not re.search(
+            r"\b(?:may|can|proceed|authoriz\w*|permit\w*|allow\w*|sufficient|"
+            r"optional|alternative|either)\b",
+            statement,
+        )
+        test_case.assertTrue(
+            unresolved_only,
+            f"{document}: additional visible SDK authority declaration: {statement}",
+        )
 
 
 def _assert_build_contract_sdk_entry(
     test_case: unittest.TestCase, markdown: str
 ) -> None:
-    entry_conditions = _normative_markdown_section(markdown, "Entry conditions")
-    _assert_sdk_authority_policy(
+    visible = _strip_non_visible_markdown(markdown, strip_inline_code=True)
+    entry_conditions = _normative_markdown_section(visible, "Entry conditions")
+    policy = _assert_sdk_authority_policy(
         test_case, entry_conditions, document="build contract Entry conditions"
+    )
+    _assert_no_additional_sdk_authority(
+        test_case,
+        visible,
+        allowed_policy=policy,
+        document="build contract",
     )
 
 
@@ -553,14 +756,21 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         self.assertIsNotNone(match)
         unknown_block = match.group("body")
         unknown_items = re.findall(r"(?m)^\s+- name:\s*\S+\s*$", unknown_block)
-        unknown_statuses = re.findall(r"(?m)^\s+status:\s*unknown\s*$", unknown_block)
+        unknown_statuses = re.findall(r"(?m)^\s+status:\s*UNKNOWN\s*$", unknown_block)
         self.assertGreaterEqual(len(unknown_items), 6)
         self.assertEqual(len(unknown_items), len(unknown_statuses))
         self.assertNotRegex(unknown_block, r"(?i)status:\s*verified")
 
     def test_invariants_preserve_behavior_and_expose_conflicts(self) -> None:
         invariants = _read(INVARIANTS_DOCUMENT)
-        for status in ("VERIFIED", "REQUIRED", "UNKNOWN", "PROPOSED"):
+        for status in (
+            "VERIFIED",
+            "INFERRED",
+            "REQUIRED",
+            "UNKNOWN",
+            "PROPOSED",
+            "VERIFIED_CONFLICT",
+        ):
             self.assertIn(status, invariants)
         for required_text in (
             "EFR32MG24B220F1536IM48",
@@ -780,13 +990,7 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         )
         self.assertEqual(
             _yaml_mapping(manifest, "sdk_authority_entry_condition"),
-            {
-                "approved_owner_decision": "required",
-                "approved_primary_evidence": "required",
-                "combination": "all",
-                "owner_decision_alone": "insufficient",
-                "authoritative_sdk_version": "unresolved",
-            },
+            SDK_AUTHORITY_CONTRACT,
         )
         manifest_requirement = _yaml_list_item(manifest, "sdk_authority")[
             "requirement"
@@ -825,10 +1029,12 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         contract = _read(BUILD_CONTRACT)
         for required_text in (
             "Before merge",
-            "Finding correction commit",
+            "BASE_SHA",
+            "HEAD_SHA",
+            "complete linear commit span",
             "fdd493f0f9e049ad4411b90fcd11e625756e1400",
             "001aad1d38ad2f39f00253a2a9a36208bf3f96e7",
-            "reverse order",
+            "reverse chronological order",
         ):
             self.assertIn(required_text, contract)
         self.assertNotIn(
@@ -964,6 +1170,310 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         workflow = _read(WORKFLOW)
         self.assertEqual(workflow.count('- "docs/governance/**"'), 2)
         self.assertEqual(workflow.count('- "tests/**"'), 2)
+
+    def test_sdk_authority_guard_rejects_final_reaudit_bypasses(self) -> None:
+        invalid_mutations = {
+            "owner_decision_alone_may_proceed": VALID_SDK_ENTRY
+            + "\n2. SDK selection may proceed with an approved owner decision alone.\n",
+            "primary_evidence_alone_may_proceed": VALID_SDK_ENTRY
+            + "\n2. SDK selection may proceed with approved primary evidence alone.\n",
+            "only_one_approval_needed": VALID_SDK_ENTRY
+            + "\n2. Only one of the two approvals is needed for SDK selection.\n",
+            "appendix_exception": VALID_SDK_ENTRY
+            + "\n## Appendix\n\nSDK selection may proceed without approved primary evidence.\n",
+            "later_exception": VALID_SDK_ENTRY
+            + "\n## Exceptions\n\nRepository history may authorize SDK selection.\n",
+            "contradictory_second_list": VALID_SDK_ENTRY
+            + "\n2. A recorded SDK version is sufficient authority for selection.\n",
+            "visible_table_exception": VALID_SDK_ENTRY
+            + "\n| SDK selection basis | Authority |\n"
+            + "|---|---|\n| Generated tree | sufficient |\n",
+            "alternative_authority": VALID_SDK_ENTRY
+            + "\n2. Mannheim test evidence is an alternative authority for SDK selection.\n",
+            "explicit_or": VALID_SDK_ENTRY
+            + "\n2. SDK selection requires approved owner decision OR approved primary evidence.\n",
+            "optional_primary_evidence": VALID_SDK_ENTRY
+            + "\n2. Approved primary evidence is optional for SDK selection.\n",
+            "optional_owner_approval": VALID_SDK_ENTRY
+            + "\n2. Approved owner approval is optional for SDK selection.\n",
+            "generated_tree_authority": VALID_SDK_ENTRY
+            + "\n2. The generated tree authorizes SDK selection.\n",
+            "mannheim_authority": VALID_SDK_ENTRY
+            + "\n2. Mannheim test evidence authorizes SDK selection.\n",
+            "live_system_authority": VALID_SDK_ENTRY
+            + "\n2. Live-system state authorizes SDK selection.\n",
+            "recorded_version_authority": VALID_SDK_ENTRY
+            + "\n2. A recorded SDK version authorizes SDK selection.\n",
+            "duplicate_entry_conditions": VALID_SDK_ENTRY
+            + "\n## Entry conditions\n\n1. SDK selection remains unresolved.\n",
+            "missing_entry_conditions": "# Contract\n\nSDK selection remains unresolved.\n",
+            "same_item_owner_decision_alone": VALID_SDK_ENTRY.rstrip()
+            + " SDK selection may proceed with an approved owner decision alone.\n",
+            "same_item_primary_evidence_alone": VALID_SDK_ENTRY.rstrip()
+            + " SDK selection may proceed with approved primary evidence alone.\n",
+            "same_item_only_one_approval": VALID_SDK_ENTRY.rstrip()
+            + " Only one of the two approvals is needed for SDK selection.\n",
+            "unclosed_comment": VALID_SDK_ENTRY + "\n<!-- unclosed comment\n",
+        }
+        for mutation, document in invalid_mutations.items():
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(AssertionError):
+                    _assert_build_contract_sdk_entry(self, document)
+
+    def test_sdk_authority_guard_excludes_inline_code_from_normative_text(self) -> None:
+        _assert_build_contract_sdk_entry(
+            self,
+            VALID_SDK_ENTRY
+            + "\n`SDK selection may proceed with an approved owner decision alone.`\n",
+        )
+
+    def test_sdk_authority_contract_is_canonical_and_machine_readable(self) -> None:
+        self.assertEqual(
+            _yaml_mapping(_read(PROVENANCE_MANIFEST), "sdk_authority_entry_condition"),
+            SDK_AUTHORITY_CONTRACT,
+        )
+        for document in (BUILD_CONTRACT, INVARIANTS_DOCUMENT):
+            self.assertIn("sdk_authority_entry_condition", _read(document))
+
+    def test_pre_merge_rollback_contract_derives_complete_current_span(self) -> None:
+        contract = _read(BUILD_CONTRACT)
+        before_merge = _markdown_section_at_level(contract, "Before merge", 3)
+        normalized = re.sub(r"\s+", " ", before_merge)
+        for required_text in (
+            "BASE_SHA",
+            "HEAD_SHA",
+            "BASE_SHA..HEAD_SHA",
+            "complete linear commit span",
+            "reverse chronological order",
+            "exact base tree",
+            "foreign",
+            "missing",
+            "non-linear",
+            "ambiguous",
+            "fail closed",
+        ):
+            with self.subTest(required_text=required_text):
+                self.assertIn(required_text.casefold(), normalized.casefold())
+
+        chronological = tuple(
+            subprocess.check_output(
+                ["git", "rev-list", "--reverse", f"{BASELINE_COMMIT}..HEAD"],
+                cwd=REPOSITORY_ROOT,
+                text=True,
+            ).splitlines()
+        )
+        self.assertGreater(len(chronological), 1)
+        self.assertEqual(chronological[-1], subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT, text=True
+        ).strip())
+        self.assertEqual(
+            _validated_pre_merge_revert_order(
+                base=BASELINE_COMMIT,
+                head=chronological[-1],
+                parents=_git_commit_parents(BASELINE_COMMIT, chronological),
+                candidate_order=tuple(reversed(chronological)),
+            ),
+            tuple(reversed(chronological)),
+        )
+
+    def test_pre_merge_rollback_order_mutations_fail_closed(self) -> None:
+        chronological = ("commit-1", "commit-2", "commit-3")
+        parents = {
+            "commit-1": ("base",),
+            "commit-2": ("commit-1",),
+            "commit-3": ("commit-2",),
+        }
+        valid_order = tuple(reversed(chronological))
+        self.assertEqual(
+            _validated_pre_merge_revert_order(
+                base="base",
+                head="commit-3",
+                parents=parents,
+                candidate_order=valid_order,
+            ),
+            valid_order,
+        )
+        invalid_cases = {
+            "wrong_order": (parents, ("commit-1", "commit-2", "commit-3")),
+            "shortened_first": (parents, ("commit-3", "commit-2")),
+            "shortened_last": (parents, ("commit-2", "commit-1")),
+            "foreign_commit": (parents, ("commit-3", "foreign", "commit-1")),
+            "non_linear": (
+                {**parents, "commit-2": ("commit-1", "side")},
+                valid_order,
+            ),
+            "ambiguous_cycle": (
+                {**parents, "commit-1": ("commit-3",)},
+                valid_order,
+            ),
+        }
+        for case, (case_parents, candidate_order) in invalid_cases.items():
+            with self.subTest(case=case):
+                with self.assertRaises(AssertionError):
+                    _validated_pre_merge_revert_order(
+                        base="base",
+                        head="commit-3",
+                        parents=case_parents,
+                        candidate_order=candidate_order,
+                    )
+
+    def test_external_pre_merge_revert_restores_exact_base_tree(self) -> None:
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT, text=True
+        ).strip()
+        commits = subprocess.check_output(
+            ["git", "rev-list", f"{BASELINE_COMMIT}..{head}"],
+            cwd=REPOSITORY_ROOT,
+            text=True,
+        ).splitlines()
+        self.assertGreater(len(commits), 1)
+        with tempfile.TemporaryDirectory(prefix="hyd-rollback-") as temporary:
+            clone = Path(temporary) / "repository"
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-local",
+                    "--no-hardlinks",
+                    str(REPOSITORY_ROOT),
+                    str(clone),
+                ],
+                check=True,
+            )
+            subprocess.run(["git", "checkout", "--quiet", head], cwd=clone, check=True)
+            for commit in commits:
+                subprocess.run(
+                    ["git", "revert", "--no-commit", commit], cwd=clone, check=True
+                )
+            restored_tree = subprocess.check_output(
+                ["git", "write-tree"], cwd=clone, text=True
+            ).strip()
+            base_tree = subprocess.check_output(
+                ["git", "rev-parse", f"{BASELINE_COMMIT}^{{tree}}"],
+                cwd=clone,
+                text=True,
+            ).strip()
+            self.assertEqual(restored_tree, base_tree)
+
+    def test_short_rollback_leaves_workflow_diff_and_base_tree_mismatch(self) -> None:
+        historical_head = "834e84f3781c3ecec2b29373951bf0973078b4b8"
+        commits = subprocess.check_output(
+            ["git", "rev-list", f"{BASELINE_COMMIT}..{historical_head}"],
+            cwd=REPOSITORY_ROOT,
+            text=True,
+        ).splitlines()
+        self.assertEqual(len(commits), 5)
+        with tempfile.TemporaryDirectory(prefix="hyd-short-rollback-") as temporary:
+            clone = Path(temporary) / "repository"
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-local",
+                    "--no-hardlinks",
+                    str(REPOSITORY_ROOT),
+                    str(clone),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "--quiet", historical_head], cwd=clone, check=True
+            )
+            for commit in commits[1:]:
+                subprocess.run(
+                    ["git", "revert", "--no-commit", commit], cwd=clone, check=True
+                )
+            remaining = subprocess.check_output(
+                ["git", "diff", "--cached", "--name-only", BASELINE_COMMIT],
+                cwd=clone,
+                text=True,
+            ).splitlines()
+            self.assertIn(".github/workflows/validate-homeassistant.yml", remaining)
+            self.assertNotEqual(
+                subprocess.check_output(["git", "write-tree"], cwd=clone, text=True).strip(),
+                subprocess.check_output(
+                    ["git", "rev-parse", f"{BASELINE_COMMIT}^{{tree}}"],
+                    cwd=clone,
+                    text=True,
+                ).strip(),
+            )
+
+    def test_documented_base_tree_is_reproducible(self) -> None:
+        base_tree = subprocess.check_output(
+            ["git", "rev-parse", f"{BASELINE_COMMIT}^{{tree}}"],
+            cwd=REPOSITORY_ROOT,
+            text=True,
+        ).strip()
+        self.assertEqual(base_tree, "45867099131ea8a0a1f2bb99449eec26469c7460")
+        self.assertIn(base_tree, _read(BUILD_CONTRACT))
+
+    def test_status_vocabulary_is_identical_and_canonical(self) -> None:
+        expected = {
+            "VERIFIED",
+            "INFERRED",
+            "UNKNOWN",
+            "PROPOSED",
+            "REQUIRED",
+            "VERIFIED_CONFLICT",
+        }
+        manifest = _read(PROVENANCE_MANIFEST)
+        invariants = _read(INVARIANTS_DOCUMENT)
+        yaml_vocabulary_match = re.search(
+            r"(?m)^status_vocabulary:[ \t]*\n"
+            r"(?P<body>(?:^[ \t]+-[ \t]+[A-Z_]+[ \t]*\n?)+)",
+            manifest,
+        )
+        self.assertIsNotNone(yaml_vocabulary_match)
+        if yaml_vocabulary_match is None:
+            return
+        yaml_vocabulary = set(
+            re.findall(
+                r"(?m)^[ \t]+-[ \t]+([A-Z_]+)[ \t]*$",
+                yaml_vocabulary_match["body"],
+            )
+        )
+        markdown_vocabulary = set(
+            re.findall(
+                r"(?m)^\| `([A-Z_]+)` \|",
+                _markdown_section_at_level(invariants, "Status vocabulary", 2),
+            )
+        )
+        self.assertEqual(yaml_vocabulary, expected)
+        self.assertEqual(markdown_vocabulary, expected)
+
+        used_yaml_statuses = re.findall(
+            r"(?m)^[ \t]+status:[ \t]*(\S+)[ \t]*$", manifest
+        )
+        self.assertTrue(used_yaml_statuses)
+        self.assertTrue(set(used_yaml_statuses) <= expected)
+        self.assertFalse(
+            any(status != status.upper() for status in used_yaml_statuses),
+            "YAML status values must use the canonical uppercase spelling",
+        )
+        self.assertNotRegex(
+            invariants,
+            r"(?i)`VERIFIED`\s+conflict|`VERIFIED conflict`",
+        )
+
+    def test_status_vocabulary_preserves_authority_semantics(self) -> None:
+        vocabulary = _markdown_section_at_level(
+            _read(INVARIANTS_DOCUMENT), "Status vocabulary", 2
+        )
+        normalized = re.sub(r"\s+", " ", vocabulary).casefold()
+        requirements = {
+            "VERIFIED": "reproducible primary or technical evidence",
+            "INFERRED": "must not establish toolchain, sdk, product, build, or release authority",
+            "UNKNOWN": "must not authorize",
+            "PROPOSED": "must not authorize",
+            "REQUIRED": "does not mean that the requirement is satisfied",
+            "VERIFIED_CONFLICT": "must not be treated as verified or as an authoritative selection",
+        }
+        for status, meaning in requirements.items():
+            with self.subTest(status=status):
+                self.assertIn(f"`{status}`".casefold(), normalized)
+                self.assertIn(meaning, normalized)
 
 
 if __name__ == "__main__":
