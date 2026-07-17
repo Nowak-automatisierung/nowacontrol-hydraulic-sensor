@@ -149,20 +149,60 @@ independent review.
 Rollback of this unmerged PR means closing or reverting the entire PR. If the
 commits are reverted individually, they must be reverted in this reverse order:
 
-1. Finding correction commit (`fix: close HYD-BASELINE-01B re-audit findings`).
-2. `fdd493f0f9e049ad4411b90fcd11e625756e1400`.
-3. `001aad1d38ad2f39f00253a2a9a36208bf3f96e7`.
+1. Finding correction commit
+   (`fix: close remaining HYD-BASELINE-01B audit findings`).
+2. `31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18`.
+3. `fdd493f0f9e049ad4411b90fcd11e625756e1400`.
+4. `001aad1d38ad2f39f00253a2a9a36208bf3f96e7`.
 
 Reverting only `001aad1d38ad2f39f00253a2a9a36208bf3f96e7` is not a complete
 rollback. A complete pre-merge rollback must restore the tree at
 `9a3e88454fb95ce600e2fbb1049718e137e6b35b`.
 
-### After a squash merge
+### After merge
 
-Record the actual resulting squash-merge commit created on `main`, then revert
-that commit. Do not use an older feature commit as the sole post-merge rollback
-and do not invent a future squash SHA. If the selected merge strategy creates a
-merge commit instead, record and revert the actual resulting merge commit.
+The post-merge procedure depends on the GitHub merge method actually used. It
+must use observed commits on `main`; it must not guess a future commit or reuse
+old feature-branch SHAs as post-merge rollback targets. Capture the required
+SHAs at merge time: record `MAIN_BEFORE` as the exact `main` SHA immediately
+before starting any merge. Validate the history before reverting anything, and
+fail closed on any mismatch.
+
+#### Squash merge
+
+After GitHub completes the merge, capture the actual new squash commit on
+`main`, observed after the merge, as `SQUASH_MAIN_SHA`. Verify that it is the
+single new commit for this PR and that its parent is the `main` SHA observed
+immediately before the merge. Revert exactly that observed commit with
+`git revert "$SQUASH_MAIN_SHA"`.
+
+#### Merge commit
+
+After GitHub completes the merge, capture the actual merge commit on `main` as
+`MERGE_MAIN_SHA`. Verify that it has exactly two parents, that its first parent
+equals "$MAIN_BEFORE", and that its second-parent history is the reviewed PR
+head. Parent 1 is the `main` history, so the documented mainline parent 1
+semantics require `git revert -m 1 "$MERGE_MAIN_SHA"`.
+
+#### Rebase merge
+
+Capture "$MAIN_BEFORE" immediately before the merge and "$MAIN_AFTER"
+immediately after the merge. Before merging, also record the reviewed feature
+commit count, order, and stable `git patch-id --stable` identities; these
+identities validate content but are never rollback SHAs.
+
+Verify ancestry with `git merge-base --is-ancestor "$MAIN_BEFORE"
+"$MAIN_AFTER"`. Determine the chronological candidate span only with
+`git rev-list --reverse --first-parent "$MAIN_BEFORE..$MAIN_AFTER"`. The span
+must contain only single-parent commits and must reproduce the reviewed feature
+patch-id sequence with the same count and order. Stop fail closed if the span
+contains an unexpected or foreign commit, any merge or other non-linear
+history, a repeated patch identity, or any other ambiguous mapping.
+
+The verified span contains the commits actually created on `main` by the rebase
+merge. Revert those observed commits in reverse chronological order, one
+`git revert` at a time. Never output or use old feature-branch SHAs as the
+post-merge rebase rollback targets.
 
 This documentation has no firmware, generator, device, RF, Home Assistant
 runtime, or deployment rollback action because none is authorized or performed
