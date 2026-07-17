@@ -37,7 +37,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Verify exact checkout SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          printf 'expected_checkout_sha=%s\n' "$EXPECTED_SHA"
+          printf 'actual_checkout_sha=%s\n' "$ACTUAL_SHA"
+          test -n "$EXPECTED_SHA"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
 
       - name: Set up Python
         uses: actions/setup-python@v5

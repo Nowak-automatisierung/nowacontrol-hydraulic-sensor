@@ -1510,6 +1510,40 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         self.assertEqual(workflow.count('- "docs/governance/**"'), 2)
         self.assertEqual(workflow.count('- "tests/**"'), 2)
 
+    def test_workflow_validates_and_reports_the_exact_event_head(self) -> None:
+        workflow = _read(WORKFLOW)
+        expected_sha_expression = "${{ github.event.pull_request.head.sha || github.sha }}"
+        checkout_match = re.search(
+            r"(?ms)^      - name: Checkout\n(?P<body>.*?)(?=^      - name:|\Z)",
+            workflow,
+        )
+        self.assertIsNotNone(checkout_match)
+        if checkout_match is None:
+            return
+        checkout = checkout_match["body"]
+        self.assertIn("uses: actions/checkout@v4", checkout)
+        self.assertIn(f"ref: {expected_sha_expression}", checkout)
+        self.assertIn("fetch-depth: 0", checkout)
+
+        verification_match = re.search(
+            r"(?ms)^      - name: Verify exact checkout SHA\n"
+            r"(?P<body>.*?)(?=^      - name:|\Z)",
+            workflow,
+        )
+        self.assertIsNotNone(verification_match)
+        if verification_match is None:
+            return
+        verification = verification_match["body"]
+        for required_text in (
+            f"EXPECTED_SHA: {expected_sha_expression}",
+            'ACTUAL_SHA="$(git rev-parse HEAD)"',
+            "expected_checkout_sha=%s",
+            "actual_checkout_sha=%s",
+            'test -n "$EXPECTED_SHA"',
+            'test "$ACTUAL_SHA" = "$EXPECTED_SHA"',
+        ):
+            self.assertIn(required_text, verification)
+
     def test_sdk_authority_guard_rejects_final_reaudit_bypasses(self) -> None:
         invalid_mutations = {
             "owner_decision_alone_may_proceed": VALID_SDK_ENTRY
