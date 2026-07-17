@@ -141,7 +141,7 @@ def _assert_scalar(
 def _strip_non_visible_markdown(
     markdown: str, *, strip_inline_code: bool = False
 ) -> str:
-    """Remove Markdown code and closed comments; reject unclosed comments."""
+    """Remove Markdown code and closed comments; reject unclosed constructs."""
 
     visible: list[str] = []
     in_comment = False
@@ -231,6 +231,8 @@ def _strip_non_visible_markdown(
                         visible.append(line_ending)
                         continue
             visible.append(visible_body + line_ending)
+    if fence is not None:
+        raise AssertionError("unclosed Markdown fence")
     if in_comment:
         raise AssertionError("unclosed HTML comment")
 
@@ -1710,6 +1712,177 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
         for base, validator in validators:
             for addition in additions:
                 validator(base + "\n" + addition)
+
+    def test_unclosed_markdown_fences_fail_closed_in_both_governance_documents(
+        self,
+    ) -> None:
+        normative_override = (
+            "## SDK authority exception\n\n"
+            "Owner decision alone authorizes SDK selection.\n"
+        )
+        inline_and_table_override = (
+            "`Owner decision alone authorizes SDK selection.`\n\n"
+            "| SDK authority | Status |\n"
+            "|---|---|\n"
+            "| Owner decision alone | APPROVED |\n"
+        )
+        unclosed_fences = {
+            "three_backticks_with_language": (
+                "```markdown\n" + normative_override
+            ),
+            "three_backticks_without_language": (
+                "```\n" + normative_override
+            ),
+            "four_backticks_empty_at_eof": "````\n",
+            "five_indented_backticks": (
+                "   `````markdown\n" + normative_override
+            ),
+            "four_backticks_with_inline_code_and_table": (
+                "````markdown\n" + inline_and_table_override
+            ),
+            "backticks_with_html_comment": (
+                "```markdown\n<!--\n" + normative_override
+            ),
+            "backticks_not_closed_by_tildes": (
+                "```markdown\n" + normative_override + "~~~\n"
+            ),
+            "four_backticks_not_closed_by_three": (
+                "````markdown\n" + normative_override + "```\n"
+            ),
+            "three_tildes_with_language": (
+                "~~~markdown\n" + normative_override
+            ),
+            "three_tildes_without_language": (
+                "~~~\n" + normative_override
+            ),
+            "four_tildes_empty_at_eof": "~~~~\n",
+            "five_indented_tildes": (
+                "   ~~~~~markdown\n" + normative_override
+            ),
+            "four_tildes_with_inline_code_and_table": (
+                "~~~~markdown\n" + inline_and_table_override
+            ),
+            "tildes_with_html_comment": (
+                "~~~markdown\n<!--\n" + normative_override
+            ),
+            "tildes_not_closed_by_backticks": (
+                "~~~markdown\n" + normative_override + "```\n"
+            ),
+            "four_tildes_not_closed_by_three": (
+                "~~~~markdown\n" + normative_override + "~~~\n"
+            ),
+        }
+        documents = {
+            "build_contract": (
+                _read(BUILD_CONTRACT),
+                "## Entry conditions",
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            "firmware_invariants": (
+                _read(INVARIANTS_DOCUMENT),
+                "## Binding owner decisions",
+                lambda markdown: _assert_firmware_invariants_sdk_entry(
+                    self, markdown
+                ),
+            ),
+        }
+
+        for document_name, (base, canonical_heading, validator) in documents.items():
+            for fence_name, fence in unclosed_fences.items():
+                document = base.rstrip("\n") + "\n\n" + fence
+                with self.subTest(
+                    document=document_name,
+                    fence=fence_name,
+                    placement="after",
+                ):
+                    with self.assertRaisesRegex(
+                        AssertionError, "unclosed Markdown fence"
+                    ):
+                        validator(document)
+
+            for marker_name, marker in (
+                ("backticks", "```markdown"),
+                ("tildes", "~~~markdown"),
+            ):
+                fence = marker + "\n" + normative_override
+                placements = {
+                    "before": base.replace(
+                        canonical_heading,
+                        fence + "\n" + canonical_heading,
+                        1,
+                    ),
+                    "inside": base.replace(
+                        canonical_heading,
+                        canonical_heading + "\n\n" + fence,
+                        1,
+                    ),
+                    "after": base.rstrip("\n") + "\n\n" + fence,
+                }
+                for placement, document in placements.items():
+                    with self.subTest(
+                        document=document_name,
+                        fence=marker_name,
+                        placement=placement,
+                    ):
+                        with self.assertRaisesRegex(
+                            AssertionError, "unclosed Markdown fence"
+                        ):
+                            validator(document)
+
+    def test_markdown_fence_controls_preserve_existing_visibility_rules(
+        self,
+    ) -> None:
+        hidden_override = "Owner decision alone authorizes SDK selection.\n"
+        closed_fences = {
+            "closed_three_backticks": (
+                "```markdown\n" + hidden_override + "```\n"
+            ),
+            "closed_three_tildes": (
+                "~~~markdown\n" + hidden_override + "~~~\n"
+            ),
+            "backticks_ignore_tilde_closer": (
+                "```markdown\n" + hidden_override + "~~~\n```\n"
+            ),
+            "tildes_ignore_backtick_closer": (
+                "~~~markdown\n" + hidden_override + "```\n~~~\n"
+            ),
+            "three_backticks_close_with_four": (
+                "```markdown\n" + hidden_override + "````\n"
+            ),
+            "four_backticks_close_with_five": (
+                "````markdown\n" + hidden_override + "`````\n"
+            ),
+            "three_tildes_close_with_four": (
+                "~~~markdown\n" + hidden_override + "~~~~\n"
+            ),
+            "four_tildes_close_with_five": (
+                "~~~~markdown\n" + hidden_override + "~~~~~\n"
+            ),
+        }
+        validators = {
+            "build_contract": (
+                _read(BUILD_CONTRACT),
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            "firmware_invariants": (
+                _read(INVARIANTS_DOCUMENT),
+                lambda markdown: _assert_firmware_invariants_sdk_entry(
+                    self, markdown
+                ),
+            ),
+        }
+        for document_name, (base, validator) in validators.items():
+            for fence_name, fence in closed_fences.items():
+                with self.subTest(document=document_name, fence=fence_name):
+                    validator(base.rstrip("\n") + "\n\n" + fence)
+
+        prose_with_fence_characters = (
+            "Normal prose containing ``` backticks does not open a fence.\n",
+            "Normal prose containing ~~~~ tildes does not open a fence.\n",
+        )
+        for prose in prose_with_fence_characters:
+            with self.subTest(prose=prose):
+                self.assertEqual(_strip_non_visible_markdown(prose), prose)
 
     def test_sdk_authority_guard_rejects_all_visible_normative_surfaces_in_both_docs(
         self,
