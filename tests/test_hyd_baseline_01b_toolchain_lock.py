@@ -49,6 +49,17 @@ SDK_AUTHORITY_STRUCTURE_FINGERPRINTS = {
     ),
 }
 
+SDK_AUTHORITY_POLICY_FINGERPRINTS = frozenset(
+    {
+        "0f03765cf34207b144cbc6a0e9888357d1a29e6f0e8c7f389e209249e34a4ceb",
+        "65a2e61d4bed33ce0eee0a24faad6494f9c1686a870e721ff80149c43eea476f",
+        "83ebd461fa3d0575e6c37ae79b68850549361f1b956da326de185b64c0c94bfa",
+        "b827b6fb3e01313401e8abe938435e1e979d02e19bfa372f7a8b7b3e19d04e60",
+        "c01554e8d3ba4b31a0f6387a468af285ddc2c00d224c2b70eb492fa236efe91e",
+        "eb815ca1f6fe50e6b7363d13cbcef4636187a24c49eab084655d47a16d37bd58",
+    }
+)
+
 RUBY_YAML_LOADER = r"""
 input = STDIN.read
 stream = Psych.parse_stream(input)
@@ -714,6 +725,14 @@ def _assert_sdk_authority_policy(
         test_case.assertIn(
             evidence_requirement, policy, f"{document}: incomplete evidence policy"
         )
+    policy_fingerprint = hashlib.sha256(
+        _normalized_markdown_statement(policy).encode("utf-8")
+    ).hexdigest()
+    test_case.assertIn(
+        policy_fingerprint,
+        SDK_AUTHORITY_POLICY_FINGERPRINTS,
+        f"{document}: complete SDK authority policy structure is not approved",
+    )
     return policy
 
 
@@ -1682,6 +1701,138 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                     ):
                         with self.assertRaises(AssertionError):
                             validator(document)
+
+    def test_sdk_authority_guard_rejects_synonymous_policy_block_contradictions(
+        self,
+    ) -> None:
+        build_base = _read(BUILD_CONTRACT)
+        invariants_base = _read(INVARIANTS_DOCUMENT)
+        maintainer_override = (
+            "A maintainer sign-off alone suffices to choose the SDK."
+        )
+
+        policy_block_contradictions = {
+            "maintainer_signoff_alone": maintainer_override,
+            "reviewer_approval_sufficient": (
+                "Reviewer approval is sufficient for SDK selection."
+            ),
+            "primary_evidence_omitted": (
+                "Primary evidence may be omitted after owner approval."
+            ),
+            "either_owner_or_evidence": (
+                "Either owner approval or primary evidence is sufficient."
+            ),
+            "one_of_authorities": (
+                "One of the following authorities may approve the SDK."
+            ),
+            "synonymous_owner_approval_selection": (
+                "A custodian endorsement by itself warrants adopting the "
+                "toolchain release."
+            ),
+            "synonymous_evidence_sufficient_selection": (
+                "Source attestation on its own licenses the toolchain choice."
+            ),
+            "single_alternative_authority": (
+                "One qualifying record is adequate to nominate the release."
+            ),
+            "owner_without_evidence": (
+                "Custodian consent unaccompanied by provenance permits choosing "
+                "the toolchain."
+            ),
+            "repository_history_alone": (
+                "The commit ledger by itself licenses toolchain adoption."
+            ),
+            "legacy_tree_alone": (
+                "Legacy generated output independently settles the toolchain "
+                "choice."
+            ),
+            "mannheim_evidence_alone": (
+                "Mannheim validation alone warrants the toolchain choice."
+            ),
+            "live_system_alone": (
+                "Running-system state solely determines the toolchain release."
+            ),
+            "local_installation_alone": (
+                "The locally installed package independently establishes the "
+                "toolchain release."
+            ),
+            "filename_alone": (
+                "The archive name definitively establishes the toolchain release."
+            ),
+            "arbitrary_version_format": (
+                "Toolchain release phoenix-rc7 is hereby ratified."
+            ),
+            "pure_version_statement": "42 is the ratified toolchain release.",
+        }
+
+        def build_inside_policy(contradiction: str) -> str:
+            anchor = "\n2. SDK content checksums"
+            return build_base.replace(
+                anchor,
+                "\n   " + contradiction + anchor,
+                1,
+            )
+
+        def invariants_inside_policy(contradiction: str) -> str:
+            anchor = "\n- `LEGACY_GENERATED_TREE = FORENSIC_REFERENCE`"
+            return invariants_base.replace(
+                anchor,
+                "\n  " + contradiction + anchor,
+                1,
+            )
+
+        visible_surfaces = {
+            "before_policy_block": maintainer_override + "\n\n{base}",
+            "after_policy_block": "{base}\n" + maintainer_override + "\n",
+            "appendix": (
+                "{base}\n## Appendix\n\n" + maintainer_override + "\n"
+            ),
+            "heading": "{base}\n## " + maintainer_override + "\n",
+            "list": "{base}\n- " + maintainer_override + "\n",
+            "table": (
+                "{base}\n| SDK authority | Rule |\n"
+                "|---|---|\n| Maintainer sign-off | sufficient |\n"
+            ),
+            "record": (
+                "{base}\nSDK authority override: " + maintainer_override + "\n"
+            ),
+            "arbitrary_version": (
+                "{base}\nToolchain release comet-2026q3 is approved by reviewer "
+                "sign-off alone.\n"
+            ),
+            "pure_version": "{base}\nApproved SDK: 42\n",
+            "inline_code": (
+                "{base}\nA `maintainer sign-off alone` suffices to choose the SDK.\n"
+            ),
+        }
+
+        documents = {
+            "build_contract": (
+                build_base,
+                build_inside_policy,
+                lambda markdown: _assert_build_contract_sdk_entry(self, markdown),
+            ),
+            "firmware_invariants": (
+                invariants_base,
+                invariants_inside_policy,
+                lambda markdown: _assert_firmware_invariants_sdk_entry(
+                    self, markdown
+                ),
+            ),
+        }
+        for document_name, (base, inside_policy, validator) in documents.items():
+            for mutation_name, contradiction in policy_block_contradictions.items():
+                with self.subTest(
+                    document=document_name,
+                    surface="canonical_policy_block",
+                    mutation=mutation_name,
+                ):
+                    with self.assertRaises(AssertionError):
+                        validator(inside_policy(contradiction))
+            for surface, template in visible_surfaces.items():
+                with self.subTest(document=document_name, surface=surface):
+                    with self.assertRaises(AssertionError):
+                        validator(template.format(base=base))
 
     def test_sdk_authority_guard_accepts_hidden_and_historical_non_authority(
         self,
