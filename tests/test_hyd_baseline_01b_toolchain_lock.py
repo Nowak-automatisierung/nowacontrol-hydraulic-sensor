@@ -18,6 +18,23 @@ INVARIANTS_DOCUMENT = GOVERNANCE_ROOT / "hydraulic-firmware-invariants.md"
 BUILD_CONTRACT = GOVERNANCE_ROOT / "hydraulic-reproducible-build-contract.md"
 WORKFLOW = REPOSITORY_ROOT / ".github/workflows/validate-homeassistant.yml"
 BASELINE_COMMIT = "9a3e88454fb95ce600e2fbb1049718e137e6b35b"
+REVIEWED_HEAD_SHA = "fbd4ad92e7dfa73a2a84c73782f4f789c9311d09"
+MERGE_COMMIT_SHA = "7decad8d963b132896a70f7616400173d97ee0c1"
+EXPECTED_PRE_MERGE_COMMITS = (
+    "001aad1d38ad2f39f00253a2a9a36208bf3f96e7",
+    "fdd493f0f9e049ad4411b90fcd11e625756e1400",
+    "31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18",
+    "3d5fb727c282943d496a5b7bcbf62f69b5e27168",
+    "834e84f3781c3ecec2b29373951bf0973078b4b8",
+    "e703093d17bb5928e6a6b8150777ea7c309d3dea",
+    "acc275ed58f7df35d6eb8b115cdff6943e248a72",
+    "5d0ac23426d63f2980a04489884c6b53ff55938e",
+    "77fc5e82899bf8a1e827c34232abcfafc3a63373",
+    "d1d91f571063c38c61840e0b39cf52778c168e13",
+    "53808823c2bca44067322ca3966aab282afd8bf9",
+    "e4058d0fac316bedd99a8d8337f4532446d25c8e",
+    REVIEWED_HEAD_SHA,
+)
 RE_AUDIT_START_HEAD = "31bd6b1190fe5e7a14d687cf8a94ed6cc4922c18"
 
 SDK_AUTHORITY_CONTRACT = {
@@ -525,6 +542,44 @@ def _validated_pre_merge_revert_order(
     if not expected_order or tuple(expected_order) != candidate_order:
         raise AssertionError("pre-merge revert order is incomplete or not exact reverse")
     return tuple(expected_order)
+
+
+def _git_commit_topology(commit: str) -> tuple[tuple[str, ...], str]:
+    """Return the ordered parents and tree for one exact commit."""
+
+    record = subprocess.check_output(
+        ["git", "rev-list", "--parents", "-n", "1", commit],
+        cwd=REPOSITORY_ROOT,
+        text=True,
+    ).split()
+    if not record or record[0] != commit:
+        raise AssertionError("ambiguous merge commit record")
+    tree = subprocess.check_output(
+        ["git", "rev-parse", f"{commit}^{{tree}}"],
+        cwd=REPOSITORY_ROOT,
+        text=True,
+    ).strip()
+    return tuple(record[1:]), tree
+
+
+def _validated_merge_topology(
+    *,
+    parents: tuple[str, ...],
+    expected_parent_one: str,
+    expected_parent_two: str,
+    merge_tree: str,
+    reviewed_head_tree: str,
+) -> tuple[str, str]:
+    """Validate the exact two-parent merge contract and reviewed tree identity."""
+
+    if len(parents) != 2:
+        raise AssertionError("merge commit must have exactly two parents")
+    expected_parents = (expected_parent_one, expected_parent_two)
+    if parents != expected_parents:
+        raise AssertionError("merge parent order or identity is not approved")
+    if merge_tree != reviewed_head_tree:
+        raise AssertionError("merge tree differs from reviewed head tree")
+    return expected_parents
 
 
 def _ordered_list_items(section: str) -> list[str]:
@@ -2222,20 +2277,30 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
 
         chronological = tuple(
             subprocess.check_output(
-                ["git", "rev-list", "--reverse", f"{BASELINE_COMMIT}..HEAD"],
+                [
+                    "git",
+                    "rev-list",
+                    "--reverse",
+                    f"{BASELINE_COMMIT}..{REVIEWED_HEAD_SHA}",
+                ],
                 cwd=REPOSITORY_ROOT,
                 text=True,
             ).splitlines()
         )
-        self.assertGreater(len(chronological), 1)
-        self.assertEqual(chronological[-1], subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT, text=True
-        ).strip())
+        self.assertEqual(len(chronological), 13)
+        self.assertEqual(chronological, EXPECTED_PRE_MERGE_COMMITS)
+        self.assertNotIn(MERGE_COMMIT_SHA, chronological)
+        parents = _git_commit_parents(BASELINE_COMMIT, chronological)
+        expected_parent = BASELINE_COMMIT
+        for commit in chronological:
+            with self.subTest(commit=commit):
+                self.assertEqual(parents[commit], (expected_parent,))
+            expected_parent = commit
         self.assertEqual(
             _validated_pre_merge_revert_order(
                 base=BASELINE_COMMIT,
-                head=chronological[-1],
-                parents=_git_commit_parents(BASELINE_COMMIT, chronological),
+                head=REVIEWED_HEAD_SHA,
+                parents=parents,
                 candidate_order=tuple(reversed(chronological)),
             ),
             tuple(reversed(chronological)),
@@ -2267,6 +2332,10 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                 {**parents, "commit-2": ("commit-1", "side")},
                 valid_order,
             ),
+            "merge_commit_in_pre_merge_span": (
+                {**parents, "commit-3": ("commit-2", "reviewed-side")},
+                valid_order,
+            ),
             "ambiguous_cycle": (
                 {**parents, "commit-1": ("commit-3",)},
                 valid_order,
@@ -2283,15 +2352,25 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                     )
 
     def test_external_pre_merge_revert_restores_exact_base_tree(self) -> None:
-        head = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT, text=True
-        ).strip()
-        commits = subprocess.check_output(
-            ["git", "rev-list", f"{BASELINE_COMMIT}..{head}"],
-            cwd=REPOSITORY_ROOT,
-            text=True,
-        ).splitlines()
-        self.assertGreater(len(commits), 1)
+        chronological = tuple(
+            subprocess.check_output(
+                [
+                    "git",
+                    "rev-list",
+                    "--reverse",
+                    f"{BASELINE_COMMIT}..{REVIEWED_HEAD_SHA}",
+                ],
+                cwd=REPOSITORY_ROOT,
+                text=True,
+            ).splitlines()
+        )
+        self.assertEqual(chronological, EXPECTED_PRE_MERGE_COMMITS)
+        commits = _validated_pre_merge_revert_order(
+            base=BASELINE_COMMIT,
+            head=REVIEWED_HEAD_SHA,
+            parents=_git_commit_parents(BASELINE_COMMIT, chronological),
+            candidate_order=tuple(reversed(chronological)),
+        )
         with tempfile.TemporaryDirectory(prefix="hyd-rollback-") as temporary:
             clone = Path(temporary) / "repository"
             subprocess.run(
@@ -2306,7 +2385,11 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                 ],
                 check=True,
             )
-            subprocess.run(["git", "checkout", "--quiet", head], cwd=clone, check=True)
+            subprocess.run(
+                ["git", "checkout", "--quiet", REVIEWED_HEAD_SHA],
+                cwd=clone,
+                check=True,
+            )
             for commit in commits:
                 subprocess.run(
                     ["git", "revert", "--no-commit", commit], cwd=clone, check=True
@@ -2320,6 +2403,211 @@ class HydBaseline01BToolchainLockTests(unittest.TestCase):
                 text=True,
             ).strip()
             self.assertEqual(restored_tree, base_tree)
+            self.assertEqual(
+                subprocess.check_output(
+                    ["git", "diff", "--cached", "--name-only", BASELINE_COMMIT],
+                    cwd=clone,
+                    text=True,
+                ),
+                "",
+            )
+
+    def test_merge_commit_topology_matches_reviewed_head(self) -> None:
+        parents, merge_tree = _git_commit_topology(MERGE_COMMIT_SHA)
+        reviewed_head_tree = subprocess.check_output(
+            ["git", "rev-parse", f"{REVIEWED_HEAD_SHA}^{{tree}}"],
+            cwd=REPOSITORY_ROOT,
+            text=True,
+        ).strip()
+        self.assertEqual(
+            _validated_merge_topology(
+                parents=parents,
+                expected_parent_one=BASELINE_COMMIT,
+                expected_parent_two=REVIEWED_HEAD_SHA,
+                merge_tree=merge_tree,
+                reviewed_head_tree=reviewed_head_tree,
+            ),
+            (BASELINE_COMMIT, REVIEWED_HEAD_SHA),
+        )
+        self.assertEqual(merge_tree, reviewed_head_tree)
+
+    def test_merge_topology_mutations_fail_closed(self) -> None:
+        valid_parents = (BASELINE_COMMIT, REVIEWED_HEAD_SHA)
+        valid_tree = "reviewed-tree"
+        invalid_cases = {
+            "one_parent": (valid_parents[:1], valid_tree),
+            "three_parents": (valid_parents + ("third-parent",), valid_tree),
+            "swapped_parent_order": (tuple(reversed(valid_parents)), valid_tree),
+            "wrong_parent_one": (("wrong-base", REVIEWED_HEAD_SHA), valid_tree),
+            "wrong_parent_two": ((BASELINE_COMMIT, "wrong-head"), valid_tree),
+            "merge_tree_mismatch": (valid_parents, "unreviewed-tree"),
+        }
+        for case, (parents, merge_tree) in invalid_cases.items():
+            with self.subTest(case=case):
+                with self.assertRaises(AssertionError):
+                    _validated_merge_topology(
+                        parents=parents,
+                        expected_parent_one=BASELINE_COMMIT,
+                        expected_parent_two=REVIEWED_HEAD_SHA,
+                        merge_tree=merge_tree,
+                        reviewed_head_tree=valid_tree,
+                    )
+
+    def test_external_merge_revert_mainline_one_restores_parent_one_tree(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hyd-merge-rollback-") as temporary:
+            clone = Path(temporary) / "repository"
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-local",
+                    "--no-hardlinks",
+                    str(REPOSITORY_ROOT),
+                    str(clone),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "--quiet", MERGE_COMMIT_SHA],
+                cwd=clone,
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "revert",
+                    "-m",
+                    "1",
+                    "--no-commit",
+                    MERGE_COMMIT_SHA,
+                ],
+                cwd=clone,
+                check=True,
+            )
+            restored_tree = subprocess.check_output(
+                ["git", "write-tree"], cwd=clone, text=True
+            ).strip()
+            parent_one_tree = subprocess.check_output(
+                ["git", "rev-parse", f"{BASELINE_COMMIT}^{{tree}}"],
+                cwd=clone,
+                text=True,
+            ).strip()
+            self.assertEqual(restored_tree, parent_one_tree)
+            self.assertEqual(
+                subprocess.check_output(
+                    ["git", "diff", "--cached", "--name-only", BASELINE_COMMIT],
+                    cwd=clone,
+                    text=True,
+                ),
+                "",
+            )
+
+    def test_merge_revert_without_mainline_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hyd-merge-no-mainline-") as temporary:
+            clone = Path(temporary) / "repository"
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-local",
+                    "--no-hardlinks",
+                    str(REPOSITORY_ROOT),
+                    str(clone),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "--quiet", MERGE_COMMIT_SHA],
+                cwd=clone,
+                check=True,
+            )
+            result = subprocess.run(
+                ["git", "revert", "--no-commit", MERGE_COMMIT_SHA],
+                cwd=clone,
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("no -m option was given", result.stderr)
+
+    def test_merge_revert_mainline_two_is_not_full_main_rollback(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hyd-merge-mainline-two-") as temporary:
+            clone = Path(temporary) / "repository"
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-local",
+                    "--no-hardlinks",
+                    str(REPOSITORY_ROOT),
+                    str(clone),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "--quiet", MERGE_COMMIT_SHA],
+                cwd=clone,
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "revert",
+                    "-m",
+                    "2",
+                    "--no-commit",
+                    MERGE_COMMIT_SHA,
+                ],
+                cwd=clone,
+                check=True,
+            )
+            resulting_tree = subprocess.check_output(
+                ["git", "write-tree"], cwd=clone, text=True
+            ).strip()
+            parent_one_tree = subprocess.check_output(
+                ["git", "rev-parse", f"{BASELINE_COMMIT}^{{tree}}"],
+                cwd=clone,
+                text=True,
+            ).strip()
+            reviewed_head_tree = subprocess.check_output(
+                ["git", "rev-parse", f"{REVIEWED_HEAD_SHA}^{{tree}}"],
+                cwd=clone,
+                text=True,
+            ).strip()
+            self.assertEqual(resulting_tree, reviewed_head_tree)
+            self.assertNotEqual(resulting_tree, parent_one_tree)
+            self.assertNotEqual(
+                subprocess.check_output(
+                    ["git", "diff", "--cached", "--name-only", BASELINE_COMMIT],
+                    cwd=clone,
+                    text=True,
+                ),
+                "",
+            )
+
+    def test_later_single_parent_hotfix_does_not_change_pre_merge_span(self) -> None:
+        chronological = EXPECTED_PRE_MERGE_COMMITS
+        parents = _git_commit_parents(BASELINE_COMMIT, chronological)
+        expected_order = tuple(reversed(chronological))
+        observed_after_hotfix = {
+            **parents,
+            MERGE_COMMIT_SHA: (BASELINE_COMMIT, REVIEWED_HEAD_SHA),
+            "later-single-parent-hotfix": (MERGE_COMMIT_SHA,),
+        }
+        self.assertEqual(
+            _validated_pre_merge_revert_order(
+                base=BASELINE_COMMIT,
+                head=REVIEWED_HEAD_SHA,
+                parents=observed_after_hotfix,
+                candidate_order=expected_order,
+            ),
+            expected_order,
+        )
 
     def test_short_rollback_leaves_workflow_diff_and_base_tree_mismatch(self) -> None:
         historical_head = "834e84f3781c3ecec2b29373951bf0973078b4b8"
